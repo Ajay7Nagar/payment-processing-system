@@ -1,0 +1,28 @@
+allprojects {
+  group = findProperty("group") ?: "com.acme.payments"
+  version = findProperty("version") ?: "0.1.0-SNAPSHOT"
+}
+
+subprojects {
+  apply plugin: "java"
+  apply plugin: "jacoco"
+  repositories { mavenCentral() }
+  java { toolchain { languageVersion = JavaLanguageVersion.of((findProperty("javaVersion") ?: "24") as int) } }
+  tasks.withType(Test).configureEach { useJUnitPlatform() }
+
+  jacoco {
+    toolVersion = "0.8.10"
+  }
+
+  tasks.register("jacocoReportAll", JacocoReport) {
+    dependsOn tasks.withType(Test)
+    reports {
+      xml.required = true
+      html.required = true
+    }
+    def mainSrc = fileTree(dir: "src/main/java")
+    sourceDirectories.setFrom(mainSrc)
+    classDirectories.setFrom(fileTree(dir: "build/classes/java/main"))
+    executionData.setFrom(fileTree(dir: project.buildDir, includes: ["**/jacoco/test.exec"]))
+  }
+}

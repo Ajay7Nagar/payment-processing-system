@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: api-service
+  jpa:
+    hibernate:
+      ddl-auto: none
+  flyway:
+    enabled: true
+  datasource:
+    url: jdbc:postgresql://localhost:5432/payments
+    username: payments
+    password: payments
+    driver-class-name: org.postgresql.Driver
+management:
+  endpoints:
+    web:
+      exposure:
+        include: metrics,prometheus,health
+  metrics:
+    tags:
+      application: api-service
+  endpoint:
+    prometheus:
+      enabled: true

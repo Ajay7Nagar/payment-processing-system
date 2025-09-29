@@ -1,0 +1,2 @@
+ALTER TABLE refunds ADD COLUMN IF NOT EXISTS merchant_id VARCHAR(64) NOT NULL DEFAULT 'unknown';
+

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.acme.payments.adapters.out.db.OrderRepositoryTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2025-09-28T15:41:06" hostname="Mac.lan" time="0.377">
+  <properties/>
+  <testcase name="saves_and_reads_order()" classname="com.acme.payments.adapters.out.db.OrderRepositoryTest" time="0.377"/>
+  <system-out><![CDATA[
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.2)
+
+2025-09-28T21:11:03.789+05:30  INFO 97399 --- [    Test worker] c.a.p.a.out.db.OrderRepositoryTest       : Starting OrderRepositoryTest using Java 17.0.16 with PID 97399 (started by ajayn in /Users/ajayn/Desktop/talentica/Assignment_3/payment-processing-system/adapters)
+2025-09-28T21:11:03.791+05:30  INFO 97399 --- [    Test worker] c.a.p.a.out.db.OrderRepositoryTest       : No active profile set, falling back to 1 default profile: "default"
+2025-09-28T21:11:03.952+05:30  INFO 97399 --- [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2025-09-28T21:11:03.953+05:30  INFO 97399 --- [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-09-28T21:11:04.064+05:30  INFO 97399 --- [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 105 ms. Found 7 JPA repository interfaces.
+2025-09-28T21:11:04.202+05:30  INFO 97399 --- [    Test worker] beddedDataSourceBeanFactoryPostProcessor : Replacing 'dataSource' DataSource bean with embedded version
+2025-09-28T21:11:04.379+05:30  INFO 97399 --- [    Test worker] o.s.j.d.e.EmbeddedDatabaseFactory        : Starting embedded database: url='jdbc:h2:mem:947ea735-3182-443f-98a8-0a3b1e860db7;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=false', username='sa'
+2025-09-28T21:11:04.634+05:30  INFO 97399 --- [    Test worker] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-09-28T21:11:04.674+05:30  INFO 97399 --- [    Test worker] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.5.2.Final
+2025-09-28T21:11:04.697+05:30  INFO 97399 --- [    Test worker] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2025-09-28T21:11:04.890+05:30  INFO 97399 --- [    Test worker] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-09-28T21:11:05.587+05:30  INFO 97399 --- [    Test worker] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+Hibernate: drop table if exists charges cascade 
+Hibernate: drop table if exists idempotency_records cascade 
+Hibernate: drop table if exists orders cascade 
+Hibernate: drop table if exists outbox_events cascade 
+Hibernate: drop table if exists payment_intents cascade 
+Hibernate: drop table if exists refunds cascade 
+Hibernate: drop table if exists webhook_events cascade 
+Hibernate: create table charges (amount_minor bigint not null, settled_at timestamp(6) with time zone, status varchar(32) not null, id varchar(64) not null, intent_id varchar(64) not null, primary key (id))
+Hibernate: create table idempotency_records (created_at timestamp(6) with time zone not null, expires_at timestamp(6) with time zone, request_hash varchar(128) not null, scope_key varchar(200) not null, response_snapshot clob, primary key (scope_key))
+Hibernate: create table orders (currency varchar(3) not null, version integer not null, amount_minor bigint not null, created_at timestamp(6) with time zone not null, status varchar(32) not null, id varchar(64) not null, merchant_id varchar(64) not null, primary key (id))
+Hibernate: create table outbox_events (available_at timestamp(6) with time zone not null, created_at timestamp(6) with time zone not null, processed_at timestamp(6) with time zone, id varchar(64) not null, topic varchar(128) not null, payload clob not null, primary key (id))
+Hibernate: create table payment_intents (created_at timestamp(6) with time zone not null, type varchar(16) not null, status varchar(32) not null, id varchar(64) not null, order_id varchar(64) not null, gateway_ref varchar(128), primary key (id))
+Hibernate: create table refunds (amount_minor bigint not null, created_at timestamp(6) with time zone not null, status varchar(32) not null, charge_id varchar(64) not null, id varchar(64) not null, merchant_id varchar(64) not null, gateway_ref varchar(128), primary key (id))
+Hibernate: create table webhook_events (processed_at timestamp(6) with time zone, received_at timestamp(6) with time zone not null, id varchar(64) not null, type varchar(64) not null, signature_hash varchar(128) not null, vendor_event_id varchar(128) not null, primary key (id))
+Hibernate: alter table if exists charges add constraint FK5o1wen5iwdsjmqqdrdwkk1xxq foreign key (intent_id) references payment_intents
+Hibernate: alter table if exists payment_intents add constraint FK1n36saag1r8l8539pc0k3m1f9 foreign key (order_id) references orders
+Hibernate: alter table if exists refunds add constraint FK43ppawypwl8todvet3ttmbhnx foreign key (charge_id) references charges
+2025-09-28T21:11:05.624+05:30  INFO 97399 --- [    Test worker] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-09-28T21:11:05.801+05:30  INFO 97399 --- [    Test worker] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2025-09-28T21:11:06.298+05:30  INFO 97399 --- [    Test worker] c.a.p.a.out.db.OrderRepositoryTest       : Started OrderRepositoryTest in 2.746 seconds (process running for 3.356)
+Hibernate: select oe1_0.id,oe1_0.amount_minor,oe1_0.created_at,oe1_0.currency,oe1_0.merchant_id,oe1_0.status,oe1_0.version from orders oe1_0 where oe1_0.id=?
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

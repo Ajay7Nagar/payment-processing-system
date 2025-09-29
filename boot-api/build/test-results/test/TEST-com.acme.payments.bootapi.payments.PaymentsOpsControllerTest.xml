@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.acme.payments.bootapi.payments.PaymentsOpsControllerTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2025-09-28T15:45:42" hostname="Mac.lan" time="0.025">
+  <properties/>
+  <testcase name="authorize_201()" classname="com.acme.payments.bootapi.payments.PaymentsOpsControllerTest" time="0.011"/>
+  <testcase name="capture_200()" classname="com.acme.payments.bootapi.payments.PaymentsOpsControllerTest" time="0.005"/>
+  <testcase name="cancel_200()" classname="com.acme.payments.bootapi.payments.PaymentsOpsControllerTest" time="0.007"/>
+  <system-out><![CDATA[2025-09-28T21:15:41.926+05:30  INFO 98180 --- [    Test worker] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.acme.payments.bootapi.payments.PaymentsOpsControllerTest]: PaymentsOpsControllerTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2025-09-28T21:15:41.931+05:30  INFO 98180 --- [    Test worker] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.acme.payments.bootapi.ApiApplication for test class com.acme.payments.bootapi.payments.PaymentsOpsControllerTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.2)
+
+2025-09-28T21:15:41.947+05:30  INFO 98180 --- [    Test worker] c.a.p.b.p.PaymentsOpsControllerTest      : Starting PaymentsOpsControllerTest using Java 17.0.16 with PID 98180 (started by ajayn in /Users/ajayn/Desktop/talentica/Assignment_3/payment-processing-system/boot-api)
+2025-09-28T21:15:41.947+05:30  INFO 98180 --- [    Test worker] c.a.p.b.p.PaymentsOpsControllerTest      : No active profile set, falling back to 1 default profile: "default"
+2025-09-28T21:15:42.085+05:30  WARN 98180 --- [    Test worker] .s.s.UserDetailsServiceAutoConfiguration : 
+
+Using generated security password: b2f7a052-df8f-46f4-836c-d7bf3fa42caa
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2025-09-28T21:15:42.086+05:30  INFO 98180 --- [    Test worker] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name inMemoryUserDetailsManager
+2025-09-28T21:15:42.100+05:30  INFO 98180 --- [    Test worker] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2025-09-28T21:15:42.101+05:30  INFO 98180 --- [    Test worker] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2025-09-28T21:15:42.101+05:30  INFO 98180 --- [    Test worker] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 0 ms
+2025-09-28T21:15:42.106+05:30  INFO 98180 --- [    Test worker] c.a.p.b.p.PaymentsOpsControllerTest      : Started PaymentsOpsControllerTest in 0.173 seconds (process running for 3.542)
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
