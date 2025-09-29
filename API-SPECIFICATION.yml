@@ -5,6 +5,8 @@ info:
   description: REST API for payments, refunds, and subscriptions. Currency fixed to INR for v1.
 servers:
   - url: /
+security:
+  - bearerAuth: []
 paths:
   /v1/payments/purchase:
     post:
@@ -45,6 +47,55 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '409': { $ref: '#/components/responses/Conflict' }
         '500': { $ref: '#/components/responses/ServerError' }
+  /v1/payments/authorize:
+    post:
+      summary: Authorize payment (auth-only)
+      operationId: authorize
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorizeRequest'
+            examples:
+              ok:
+                value:
+                  orderId: order-123
+                  amount: { amount: "10.00", currency: INR }
+                  paymentToken: tok_opaque
+      responses:
+        '201':
+          description: Authorized
+          headers:
+            X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+            X-API-Version: { $ref: '#/components/headers/ApiVersion' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /v1/payments/capture:
+    post:
+      summary: Capture an authorization
+      operationId: capture
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaptureRequest'
+            examples:
+              ok:
+                value:
+                  authorizationId: pi-order-123
+                  amount: { amount: "5.00", currency: INR }
+      responses:
+        '200':
+          description: Captured
+          headers:
+            X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+            X-API-Version: { $ref: '#/components/headers/ApiVersion' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /v1/payments/cancel:
     post:
       summary: Cancel (void) an authorization
@@ -80,6 +131,104 @@ paths:
         '422': { $ref: '#/components/responses/Unprocessable' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/ServerError' }
+  /v1/payments/refund:
+    post:
+      summary: Create a refund (full or partial)
+      operationId: refund
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefundRequest'
+            examples:
+              full:
+                value:
+                  chargeId: ch-order-123
+              partial:
+                value:
+                  chargeId: ch-order-123
+                  amount: { amount: "3.00", currency: INR }
+      responses:
+        '201':
+          description: Refund accepted
+          headers:
+            X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+            X-API-Version: { $ref: '#/components/headers/ApiVersion' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /v1/subscriptions:
+    post:
+      summary: Create subscription
+      operationId: createSubscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscriptionCreateRequest'
+      responses:
+        '201': { description: Created }
+  /v1/subscriptions/{id}/cancel:
+    post:
+      summary: Cancel subscription
+      operationId: cancelSubscription
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Canceled }
+  /v1/transactions:
+    get:
+      summary: List transactions
+      operationId: listTransactions
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+        - name: nextCursor
+          in: query
+          schema: { type: string, description: Opaque cursor returned by previous call }
+        - name: status
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          headers:
+            X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+            X-API-Version: { $ref: '#/components/headers/ApiVersion' }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListTransactionsResponse'
+  /v1/webhooks/authorize-net:
+    post:
+      summary: Authorize.Net webhook receiver
+      operationId: webhookAuthorizeNet
+      security: []
+      parameters:
+        - name: X-Signature
+          in: header
+          required: false
+          schema: { type: string }
+        - name: X-Timestamp
+          in: header
+          required: false
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '200': { description: Acked }
 components:
   parameters:
     IdempotencyKey:
@@ -104,6 +253,11 @@ components:
       description: Unprocessable entity
     ServerError:
       description: Server error
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     Money:
       type: object
@@ -118,11 +272,30 @@ components:
         orderId: { type: string }
         amount: { $ref: '#/components/schemas/Money' }
         paymentToken: { type: string }
+    AuthorizeRequest:
+      type: object
+      required: [ orderId, amount, paymentToken ]
+      properties:
+        orderId: { type: string }
+        amount: { $ref: '#/components/schemas/Money' }
+        paymentToken: { type: string }
+    CaptureRequest:
+      type: object
+      required: [ authorizationId ]
+      properties:
+        authorizationId: { type: string }
+        amount: { $ref: '#/components/schemas/Money' }
     CancelRequest:
       type: object
       required: [ authorizationId ]
       properties:
         authorizationId: { type: string }
+    RefundRequest:
+      type: object
+      required: [ chargeId ]
+      properties:
+        chargeId: { type: string }
+        amount: { $ref: '#/components/schemas/Money' }
     Payment:
       type: object
       required: [ id, amount, status, createdAt ]
@@ -137,3 +310,20 @@ components:
       properties:
         authorizationId: { type: string }
         status: { type: string, enum: [ CANCELED ] }
+    Transaction:
+      type: object
+      required: [ id, amount, status, createdAt ]
+      properties:
+        id: { type: string }
+        amount: { $ref: '#/components/schemas/Money' }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+    ListTransactionsResponse:
+      type: object
+      required: [ items ]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Transaction' }
+        nextCursor:
+          type: string

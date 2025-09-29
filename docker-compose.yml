@@ -25,3 +25,47 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+  api:
+    build:
+      context: ./boot-api
+      dockerfile: Dockerfile
+    image: payments-api:local
+    container_name: payments-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/payments
+      SPRING_DATASOURCE_USERNAME: payments
+      SPRING_DATASOURCE_PASSWORD: payments
+      SPRING_JPA_HIBERNATE_DDL_AUTO: none
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      AUTHORIZENET_API_LOGIN_ID: ${AUTHORIZE_NET_API_LOGIN_ID:-}
+      AUTHORIZENET_TRANSACTION_KEY: ${AUTHORIZE_NET_TRANSACTION_KEY:-}
+      AUTHORIZENET_SANDBOX: "true"
+      APP_SECURITY_ENABLED: "false"
+    ports:
+      - "8080:8080"
+  worker:
+    build:
+      context: ./boot-worker
+      dockerfile: Dockerfile
+    image: payments-worker:local
+    container_name: payments-worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/payments
+      SPRING_DATASOURCE_USERNAME: payments
+      SPRING_DATASOURCE_PASSWORD: payments
+      SPRING_JPA_HIBERNATE_DDL_AUTO: none
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379

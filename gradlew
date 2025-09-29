@@ -115,6 +115,58 @@ esac
 CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
 
 
+find_java17_home() {
+    if [ "$darwin" = "true" ] && command -v /usr/libexec/java_home >/dev/null 2>&1 ; then
+        candidate=$(/usr/libexec/java_home -v 17 2>/dev/null)
+        if [ -n "$candidate" ]; then
+            echo "$candidate"
+            return 0
+        fi
+    fi
+    candidate_home="$HOME/.sdkman/candidates/java"
+    if [ -d "$candidate_home" ]; then
+        if [ -L "$candidate_home/current" ]; then
+            target=$(readlink "$candidate_home/current")
+            if echo "$target" | grep -E '^(17|[2-9][0-9])' >/dev/null 2>&1 ; then
+                echo "$candidate_home/$target"
+                return 0
+            fi
+        fi
+        candidate=$(ls "$candidate_home" 2>/dev/null | grep -E '^(17|[2-9][0-9])' | sort -r | head -n 1)
+        if [ -n "$candidate" ]; then
+            echo "$candidate_home/$candidate"
+            return 0
+        fi
+    fi
+    return 1
+}
+
+ensure_java17() {
+    detected=""
+    if [ -n "$JAVA_HOME" ] && [ -x "$JAVA_HOME/bin/java" ]; then
+        java_version=$("$JAVA_HOME/bin/java" -version 2>&1 | awk -F\" '/version/ {print $2}' | head -n 1)
+        case "$java_version" in
+            1.*)
+                java_major=$(echo "$java_version" | awk -F. '{print $2}')
+                ;;
+            *)
+                java_major=${java_version%%.*}
+                ;;
+        esac
+        if [ -n "$java_major" ] && [ "$java_major" -lt 17 ] 2>/dev/null; then
+            detected=$(find_java17_home)
+        fi
+    else
+        detected=$(find_java17_home)
+    fi
+
+    if [ -n "$detected" ]; then
+        JAVA_HOME="$detected"
+    fi
+}
+
+ensure_java17
+
 # Determine the Java command to use to start the JVM.
 if [ -n "$JAVA_HOME" ] ; then
     if [ -x "$JAVA_HOME/jre/sh/java" ] ; then

@@ -2,10 +2,8 @@ package com.acme.payments.adapters.out.gateway;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Value;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
-import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.net.URI;
@@ -14,24 +12,25 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 
-@Component
 public class AuthorizeNetClient {
     private final String apiLoginId;
     private final String transactionKey;
     private final boolean sandbox;
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper;
     private final HttpClient client = HttpClient.newHttpClient();
     private final MeterRegistry meterRegistry;
 
     public AuthorizeNetClient(
-            @Value("${authorizenet.apiLoginId:}") String apiLoginId,
-            @Value("${authorizenet.transactionKey:}") String transactionKey,
-            @Value("${authorizenet.sandbox:true}") boolean sandbox,
-            MeterRegistry meterRegistry) {
+            String apiLoginId,
+            String transactionKey,
+            boolean sandbox,
+            MeterRegistry meterRegistry,
+            ObjectMapper mapper) {
         this.apiLoginId = apiLoginId;
         this.transactionKey = transactionKey;
         this.sandbox = sandbox;
         this.meterRegistry = meterRegistry;
+        this.mapper = mapper;
     }
 
     private String baseUrl() { return sandbox ? "https://apitest.authorize.net/xml/v1/request.api" : "https://api2.authorize.net/xml/v1/request.api"; }
@@ -72,7 +71,21 @@ public class AuthorizeNetClient {
             String result = root.path("messages").path("resultCode").asText("");
             gr.approved = "Ok".equalsIgnoreCase(result);
             gr.referenceId = root.path("transactionResponse").path("transId").asText(null);
+            if (!gr.approved) {
+                Timer.builder("gateway.decline")
+                        .tag("vendor", "authorize_net")
+                        .tag("operation", type)
+                        .register(meterRegistry)
+                        .record(1, java.util.concurrent.TimeUnit.NANOSECONDS);
+            }
             return gr;
+        } catch (java.net.http.HttpTimeoutException te) {
+            Timer.builder("gateway.timeout")
+                    .tag("vendor", "authorize_net")
+                    .tag("operation", type)
+                    .register(meterRegistry)
+                    .record(1, java.util.concurrent.TimeUnit.NANOSECONDS);
+            GatewayResponse gr = new GatewayResponse(); gr.approved = false; gr.referenceId = null; return gr;
         } catch (Exception e) {
             Timer.builder("gateway.request.error")
                     .tag("vendor", "authorize_net")

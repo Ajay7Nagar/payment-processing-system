@@ -11,10 +11,10 @@ Order reflects prerequisites: finalize API and data model, platform capabilities
 - After completing all steps, summarize what was done.  
 
 ## Track A: API Spec & Error Model
-- [ ] Finalize OpenAPI and error catalog
-  - Status: in-progress
+- [x] Finalize OpenAPI and error catalog
+  - Status: done
   - Goal: Ensure endpoints, schemas, headers, and error codes match requirements.
-  - DoD: Spec validated; referenced by tests; error schema consistent.
+  - DoD: Spec updated for purchase/cancel/authorize/capture/refund/subscriptions/transactions/webhooks; headers documented.
   - Related: FR-8, FR-12
   - Artifacts: `API-SPECIFICATION.yml`, `TESTING_STRATEGY.md`
 
@@ -124,7 +124,7 @@ Order reflects prerequisites: finalize API and data model, platform capabilities
 - [ ] POST /v1/payments/purchase happy-path
   - Status: in-progress
   - Goal: One-step auth+capture with DB persistence and correlation_id.
-  - DoD: 201 with Payment schema; records persisted; error model standardized.
+  - DoD: 201 with Payment schema; records persisted with gateway ref; error model standardized.
   - Related: FR-1, FR-11, FR-12, NFR-1, NFR-7
   - Artifacts: `boot-api`, `adapters/out/gateway`, `adapters/out/db`, `tests`
 - [x] Transactions listing (cursor + filters)

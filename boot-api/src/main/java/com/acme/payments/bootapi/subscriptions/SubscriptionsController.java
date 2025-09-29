@@ -17,12 +17,14 @@ public class SubscriptionsController {
     @PostMapping
     public ResponseEntity<?> create(@Validated @RequestBody SubscriptionDtos.CreateRequest req) {
         service.validateCreate(req);
+        service.createSubscription(req);
         return ResponseEntity.status(201).build();
     }
 
     @PostMapping("/{id}/cancel")
     public ResponseEntity<?> cancel(@PathVariable("id") String id) {
         service.validateCancel(id);
+        service.cancelSubscription(id);
         return ResponseEntity.ok().build();
     }
 }

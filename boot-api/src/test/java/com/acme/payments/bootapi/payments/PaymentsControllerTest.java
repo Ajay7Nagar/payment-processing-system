@@ -1,57 +1,108 @@
 package com.acme.payments.bootapi.payments;
 
-import com.acme.payments.bootapi.config.CorrelationIdFilter;
-import com.acme.payments.bootapi.error.GlobalExceptionHandler;
-import com.acme.payments.bootapi.ratelimit.RateLimiter;
-import com.acme.payments.bootapi.security.SecurityConfig;
+import com.acme.payments.bootapi.idempotency.IdempotencyService;
+import com.acme.payments.bootapi.security.MerchantContext;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = PaymentsController.class)
-@Import({CorrelationIdFilter.class, GlobalExceptionHandler.class, com.acme.payments.bootapi.security.SecurityConfig.class})
-@org.springframework.test.context.TestPropertySource(properties = {"app.security.enabled=false"})
 class PaymentsControllerTest {
 
-    @Autowired
-    MockMvc mvc;
+    private PaymentsService paymentsService;
+    private IdempotencyService idempotencyService;
+    private MerchantContext merchantContext;
+    private MockMvc mvc;
 
-    @MockBean
-    PaymentsService paymentsService;
-    @MockBean
-    RateLimiter rateLimiter;
-    @MockBean
-    PaymentsOpsService opsService;
-    @MockBean
-    com.acme.payments.bootapi.idempotency.IdempotencyService idempotencyService;
+    @BeforeEach
+    void setUp() {
+        paymentsService = mock(PaymentsService.class);
+        idempotencyService = mock(IdempotencyService.class);
+        merchantContext = mock(MerchantContext.class);
+        when(merchantContext.getMerchantId()).thenReturn("merchant-1");
 
-    @org.junit.jupiter.api.BeforeEach
-    void allowRateLimiter() {
-        when(rateLimiter.tryConsume(anyString())).thenReturn(true);
+        PaymentsController controller = new PaymentsController(
+                paymentsService,
+                idempotencyService,
+                new ObjectMapper(),
+                java.util.Optional.of(merchantContext),
+                java.util.Optional.of(new SimpleMeterRegistry())
+        );
+
+        mvc = MockMvcBuilders.standaloneSetup(controller).build();
     }
 
     @Test
-    void purchase_returns201_and_sets_correlation_header() throws Exception {
-        String body = "{\"orderId\":\"o1\",\"amount\":{\"amount\":\"10.00\",\"currency\":\"INR\"},\"paymentToken\":\"tok\"}";
-        mvc.perform(post("/v1/payments/purchase").contentType(MediaType.APPLICATION_JSON).content(body))
+    void purchase_without_idempotency_creates_payment() throws Exception {
+        String body = "{" +
+                "\"orderId\":\"order-1\"," +
+                "\"amount\":{\"amount\":\"10.00\",\"currency\":\"INR\"}," +
+                "\"paymentToken\":\"tok\"}";
+
+        mvc.perform(post("/v1/payments/purchase")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
                 .andExpect(status().isCreated())
-                .andExpect(header().exists("X-Correlation-Id"));
+                .andExpect(jsonPath("$.id").value("order-1"))
+                .andExpect(jsonPath("$.status").value("CAPTURED"));
+
+        verify(paymentsService).validatePurchase(any());
+        verify(paymentsService).createOrderIfAbsent(any());
+        verifyNoInteractions(idempotencyService);
     }
 
     @Test
-    void purchase_validation_error_returns_422() throws Exception {
-        String body = "{\"orderId\":\"\",\"amount\":{\"amount\":\"10\",\"currency\":\"INR\"},\"paymentToken\":\"\"}";
-        mvc.perform(post("/v1/payments/purchase").contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isUnprocessableEntity());
+    void purchase_with_idempotency_returns_cached_response() throws Exception {
+        when(idempotencyService.scopeKey(eq("merchant-1"), eq("/v1/payments/purchase"), eq("idem")))
+                .thenReturn("scope");
+        when(idempotencyService.hashPayload(any())).thenReturn("hash");
+        when(idempotencyService.findResponse("scope", "hash"))
+                .thenReturn("{\"id\":\"cached\"}");
+
+        mvc.perform(post("/v1/payments/purchase")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Idempotency-Key", "idem")
+                        .content("{" +
+                                "\"orderId\":\"order-1\"," +
+                                "\"amount\":{\"amount\":\"10.00\",\"currency\":\"INR\"}," +
+                                "\"paymentToken\":\"tok\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value("cached"));
+
+        verify(idempotencyService, never()).storeResponse(any(), any(), any());
+        verifyNoInteractions(paymentsService);
+    }
+
+    @Test
+    void purchase_with_idempotency_persists_when_not_cached() throws Exception {
+        when(idempotencyService.scopeKey(any(), any(), any())).thenReturn("scope");
+        when(idempotencyService.hashPayload(any())).thenReturn("hash");
+        when(idempotencyService.findResponse("scope", "hash")).thenReturn(null);
+
+        mvc.perform(post("/v1/payments/purchase")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Idempotency-Key", "key")
+                        .content("{" +
+                                "\"orderId\":\"order-2\"," +
+                                "\"amount\":{\"amount\":\"12.00\",\"currency\":\"INR\"}," +
+                                "\"paymentToken\":\"tok\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value("order-2"));
+
+        verify(idempotencyService).storeResponse(eq("scope"), eq("hash"), any());
+        verify(paymentsService).validatePurchase(any());
+        verify(paymentsService).createOrderIfAbsent(any());
     }
 }
+
+

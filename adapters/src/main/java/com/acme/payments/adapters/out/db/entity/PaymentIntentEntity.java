@@ -27,4 +27,36 @@ public class PaymentIntentEntity {
     private Instant createdAt = Instant.now();
 
     public PaymentIntentEntity() {}
+
+    public String getId() {
+        return id;
+    }
+
+    public OrderEntity getOrder() {
+        return order;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public String getGatewayRef() {
+        return gatewayRef;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public void setGatewayRef(String gatewayRef) {
+        this.gatewayRef = gatewayRef;
+    }
 }

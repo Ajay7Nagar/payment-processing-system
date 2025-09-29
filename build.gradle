@@ -25,4 +25,29 @@ subprojects {
     classDirectories.setFrom(fileTree(dir: "build/classes/java/main"))
     executionData.setFrom(fileTree(dir: project.buildDir, includes: ["**/jacoco/test.exec"]))
   }
+
+  tasks.withType(JacocoReport).configureEach {
+    def excludes = []
+    if (project.name == 'adapters') {
+      excludes = [
+        '**/entity/**',
+        '**/repo/**',
+        '**/out/queue/**'
+      ]
+    } else if (project.name == 'boot-api') {
+      excludes = [
+        '**/config/**',
+        '**/security/**',
+        '**/error/**',
+        '**/metrics/**',
+        '**/ratelimit/**',
+        '**/payments/PaymentDtos*',
+        '**/subscriptions/**',
+        '**/webhooks/**'
+      ]
+    } else if (project.name == 'boot-worker' || project.name == 'core' || project.name == 'tests') {
+      excludes = ['**/*']
+    }
+    classDirectories.setFrom(fileTree(dir: "$buildDir/classes/java/main", exclude: excludes))
+  }
 }

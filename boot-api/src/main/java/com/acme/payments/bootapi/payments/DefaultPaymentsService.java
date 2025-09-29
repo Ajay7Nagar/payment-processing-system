@@ -69,8 +69,16 @@ public class DefaultPaymentsService implements PaymentsService {
             f = com.acme.payments.adapters.out.db.entity.ChargeEntity.class.getDeclaredField("intent"); f.setAccessible(true); f.set(charge, intent);
             f = com.acme.payments.adapters.out.db.entity.ChargeEntity.class.getDeclaredField("amountMinor"); f.setAccessible(true); f.set(charge, amountMinor);
             f = com.acme.payments.adapters.out.db.entity.ChargeEntity.class.getDeclaredField("status"); f.setAccessible(true); f.set(charge, "CAPTURED");
+            f = com.acme.payments.adapters.out.db.entity.ChargeEntity.class.getDeclaredField("settledAt"); f.setAccessible(true); f.set(charge, java.time.Instant.now());
         } catch (Exception e) { throw new RuntimeException(e); }
         chargeRepository.save(charge);
+
+        try {
+            java.lang.reflect.Field fo = com.acme.payments.adapters.out.db.entity.OrderEntity.class.getDeclaredField("status");
+            fo.setAccessible(true);
+            fo.set(order, "PAID");
+            orderRepository.save(order);
+        } catch (Exception ignored) {}
     }
 
     private void validateMoney(PaymentDtos.Money money) {

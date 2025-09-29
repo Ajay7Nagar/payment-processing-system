@@ -1,9 +1,11 @@
 package com.acme.payments.adapters.out.queue;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
+@ConditionalOnProperty(name = "app.queue.type", havingValue = "redis")
 public class RedisEventQueue implements EventQueue {
     private final StringRedisTemplate redis;
 

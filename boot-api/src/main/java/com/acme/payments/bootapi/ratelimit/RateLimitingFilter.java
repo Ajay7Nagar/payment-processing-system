@@ -27,8 +27,9 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        String key = request.getRemoteAddr();
+        String key = request.getRemoteAddr(); // Or extract from JWT for authenticated requests
         if (!rateLimiter.tryConsume(key)) {
+            response.resetBuffer();
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
             response.setHeader("Retry-After", "1");
             return;

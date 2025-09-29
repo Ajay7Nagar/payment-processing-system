@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.Optional;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class DefaultPaymentsOpsService implements PaymentsOpsService {
@@ -74,19 +75,35 @@ public class DefaultPaymentsOpsService implements PaymentsOpsService {
     }
 
     @Override
-    public void cancel(PaymentDtos.CancelRequest req) {
+    @Transactional
+    public PaymentDtos.CancelResponse cancel(PaymentDtos.CancelRequest req) {
         PaymentIntentEntity intent = intentRepository.findById(req.authorizationId())
                 .orElseThrow(() -> ApiException.unprocessable("NOT_FOUND", "Authorization not found"));
+
         try {
             java.lang.reflect.Field fs = PaymentIntentEntity.class.getDeclaredField("status"); fs.setAccessible(true);
-            Object current = fs.get(intent);
-            if ("CAPTURED".equals(current)) {
-                throw new ApiException("CONFLICT", "Already captured", HttpStatus.CONFLICT);
+            Object currentStatus = fs.get(intent);
+
+            if ("CAPTURED".equals(currentStatus)) {
+                throw new ApiException("CONFLICT", "Cannot void a captured transaction", HttpStatus.CONFLICT);
             }
-            com.acme.payments.adapters.out.gateway.AuthorizeNetClient.GatewayResponse gr = gateway.voidAuth(req.authorizationId());
-            if (!gr.approved) throw new ApiException("GATEWAY_DECLINED", "Void declined", HttpStatus.BAD_GATEWAY);
+            if ("CANCELED".equals(currentStatus)) {
+                return new PaymentDtos.CancelResponse(intent.getId(), "CANCELED");
+            }
+
+            com.acme.payments.adapters.out.gateway.AuthorizeNetClient.GatewayResponse gr = gateway.voidAuth(intent.getGatewayRef());
+
+            if (!gr.approved) {
+                throw new ApiException("GATEWAY_DECLINED", "Void declined by gateway", HttpStatus.BAD_GATEWAY);
+            }
+
             fs.set(intent, "CANCELED");
-        } catch (ApiException e) { throw e; } catch (Exception e) { throw new RuntimeException(e); }
+        } catch (ApiException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         intentRepository.save(intent);
+        return new PaymentDtos.CancelResponse(intent.getId(), "CANCELED");
     }
 }
