@@ -1,52 +1,125 @@
 # Testing Strategy
 
-Scope: Ensure functional correctness and production-grade non-functional behavior for the Monolith API + Redis Streams + Worker architecture. Tests map to FR/NFR IDs in `requirements.md` and use environment-based configuration.
+## Goals
+- Ensure the payment processing platform meets functional and non-functional requirements defined in `raw-requirement.txt` and `requirements.md`.
+- Provide confidence in payment flow correctness, tenant isolation, resilience, security, and compliance readiness before production deployment.
+- Align testing activities with modular monolith architecture (API gateway, domain modules, async workers, persistence, observability).
 
-## 1. Test layers and objectives
-- Unit (JUnit 5)
-  - Target: fast validation of domain policies and state machines.
-  - Focus: amount/bounds (FR-15), BIN allow/deny (FR-16), idempotency key scope (FR-6), state transitions for payment/refund/subscription (Section 10.2 in Architecture).
-- Property-based (JQwik)
-  - Target: invariants across ranges and sequences.
-  - Focus: Σ(refunds) ≤ original (FR-4), subscription schedules and dunning windows (FR-5), pagination cursors (FR-17).
-- Integration (Testcontainers: PostgreSQL, Redis)
-  - Target: persistence mappings, optimistic locking (FR-19), idempotency/outbox behavior, Redis Streams consumer groups and dedupe (FR-6/7).
-- Contract tests (Authorize.Net sandbox)
-  - Target: gateway requests/responses and error mapping (FR-10/12); webhook authenticity checks (FR-7).
-  - Note: credentials via env; no secrets in repo. Replay deterministic scenarios via fixtures.
-- End-to-end flows (local compose)
-  - Target: purchase, auth→capture, cancel, full/partial refunds, subscription create + simulated charges via webhook replayer; JWT/RBAC checks (FR-1..5, FR-7..9, FR-12, FR-17).
-- Non-functional (k6 + metrics)
-  - Target: latency/throughput, rate limits, webhook ack and e2e budgets, resilience. See `nonfunctional-test-plan.md`.
+## Testing Pillars
+- **Functional Validation**: Confirm core and advanced payment flows operate correctly against Authorize.Net sandbox.
+- **Quality Attributes**: Verify performance, availability, scalability, security, privacy, and observability.
+- **Automation First**: Maximize automated verification (unit, integration, contract, performance) with ≥80% coverage and continuous feedback.
+- **Shift Left**: Run fast feedback tests locally via Docker Compose; promote to staging for full-system validation.
 
-## 2. Coverage goals and quality bars
-- Line coverage ≥ 80% overall; ≥ 90% on critical paths (purchase, auth→capture, refund, subscription charge, webhook ingest) [NFR-3].
-- Error model conformance across all endpoints; standardized schema with correlation_id [FR-12].
-- Zero sensitive data in logs; 100% responses with correlation_id [NFR-1, Security].
+## Test Types & Coverage
 
-## 3. Test data and fixtures
-- Deterministic amounts within INR rules (FR-14/15); valid/invalid BIN samples for allow/deny.
-- Webhook payload fixtures for: payment.authorized|captured|settled|failed, refund.completed, subscription.* events (FR-7).
-- Idempotency: repeated identical requests with the same `X-Idempotency-Key`.
+### 1. Unit Tests
+- **Scope**: Domain services, validators, mappers, utility classes across `payments`, `billing`, `reporting`, `webhook`, and shared modules.
+- **Key Scenarios**:
+  - Payment state machine transitions (authorize → capture → settle, cancel, refund).
+  - Subscription schedule calculations, dunning sequence generation.
+  - Idempotency key collision handling and timeline event generation.
+  - Error mapping to structured error responses.
+- **Tooling**: JUnit 5 + Mockito (or equivalent) with coverage reporting in CI.
+- **Target**: ≥80% line and branch coverage; high priority on business-critical logic.
 
-## 4. Tooling
-- Unit/Integration: JUnit 5, Testcontainers (PostgreSQL 15, Redis), JQwik for properties.
-- Load/Performance: k6 scenarios aligned to acceptance thresholds in `nonfunctional-test-plan.md`.
-- Coverage reporting: JaCoCo; snapshot summarized in `TEST_REPORT.md`.
+### 2. Component Tests
+- **Scope**: REST controllers, service facades, repositories using Spring Boot test slices with Testcontainers (PostgreSQL, RabbitMQ).
+- **Key Scenarios**:
+  - Purchase/authorize endpoints persisting transactions with correlation IDs.
+  - Conflict detection on duplicate idempotency keys.
+  - Single-tenant repository lookups using globally scoped IDs.
+  - Subscription creation updating billing schedules and proration credits.
+  - Webhook dedup persistence, queue publication, and retry scheduler behavior (with RabbitMQ Testcontainers).
+- **Goal**: Validate wiring and persistence behavior without external dependencies.
 
-## 5. Execution (local)
-- Unit + integration: run the Maven test phase with Testcontainers enabled; ensure DB/Redis start per-test and are isolated.
-- Contract tests: run against Authorize.Net sandbox with env-provided credentials; record outcomes for screenshots.
-- End-to-end: bring up docker-compose (API, Worker, DB, Redis, OTel, MailHog, replayer); run smoke and flow suites; verify DB and sandbox screenshots.
-- Load tests: execute k6 scripts for purchase, transactions listing, webhook ack/e2e; capture metrics and logs.
+### 3. Integration Tests
+- **Scope**: End-to-end flows against Authorize.Net sandbox using real HTTP calls.
+- **Key Scenarios**:
+  - Purchase flow and refund confirmations verifying gateway responses.
+  - Two-step authorize/capture with error retry simulation.
+  - Webhook ingestion verifying signature validation, queue enqueue, and worker consumption.
+- **Execution**: Run in staging and dedicated integration pipeline due to external dependency latency.
 
-## 6. CI gates
-- Fail build if: coverage < 80% overall or < 90% on critical-path packages; any nonconforming error schema; any secrets detected in logs/artifacts.
-- Upload artifacts: JaCoCo report, k6 summary, logs with correlation IDs, `TEST_REPORT.md`.
+### 4. Contract Tests
+- **Scope**: Provider contracts for API responses, consumer contracts for outbound Authorize.Net interactions.
+- **Approach**: Use OpenAPI-driven tests or Pact contracts to ensure backward compatibility and maintain stable client integrations.
+- **Use Cases**: Validate response schemas for payments/subscriptions endpoints; verify Authorize.Net request payload formats.
 
-## 7. Traceability
-- Map each test suite and scenario to FR/NFR IDs; include IDs in test display names and in `TEST_REPORT.md` tables for quick auditing.
+### 5. Performance & Load Tests
+- **Scope**: Validate latency, throughput, and resource utilization under expected peak loads.
+- **Scenarios**:
+  - Purchase, refund, subscription endpoints at 20 RPS (steady) and 100 RPS bursts (stress).
+  - Worker throughput for 100 webhook events/minute and dunning bursts.
+- **Tooling**: k6 scripts, Prometheus/Grafana for metric capture.
+- **Targets**: p95 <300 ms, p99 <500 ms; queue backlog drained within 2 minutes; CPU/RAM within budget.
 
-## 8. Reporting
-- Update `TEST_REPORT.md` after each CI run with: coverage %, pass/fail by suite, latency percentiles, error rates, and any DLQ/duplicate counts.
-- Attach two screenshots: DB transactions view, Authorize.Net sandbox view, showing matching transactions (including a subscription charge and a webhook-driven update).
+### 6. Security Tests
+- **Scope**: JWT validation, rate limiting, data access controls, secrets handling.
+- **Activities**:
+  - Automated checks for token expiration, signature tampering, and missing claims.
+  - Static analysis (SAST) and dependency scanning (OWASP Dependency-Check).
+  - Penetration-style scripts for injection, broken access control, SSRF entry points.
+- **Outputs**: Security test report, remediation plan for findings.
+
+### 7. Privacy & Compliance Tests
+- **Scope**: GDPR anonymization, PCI DSS log redaction, audit log immutability, data retention policies.
+- **Approach**:
+  - Automated tests verifying anonymization job behavior.
+  - Manual checks for log redaction and retention configuration.
+  - Compliance API functional tests evaluating filtering accuracy and access controls.
+
+### 8. Observability Verification
+- **Scope**: Ensure metrics, logs, and traces meet NFR-7 requirements.
+- **Checks**:
+  - Automated smoke test verifying `/metrics`, `/actuator/health`, and tracing headers on key endpoints.
+  - Log parsing tests confirming correlation IDs and merchant IDs present without PII.
+  - Tracing tests validating spans cover API → domain → external gateway → worker flows.
+
+### 9. Chaos & Resilience Tests
+- **Scope**: Validate behavior under component failures (gateway outage, queue downtime, DB failover).
+- **Execution**: Chaos tooling (Litmus or custom scripts) in staging.
+- **Scenarios**:
+  - Simulate Authorize.Net timeout and observe circuit breaker behavior.
+  - Kill worker pod during backlog processing; ensure DLQ usage and retry policies.
+- **Success Criteria**: Graceful degradation messages, automatic recovery, no data loss.
+
+### 10. User Acceptance & Scenario Tests
+- **Participants**: Product owners, QA, compliance officers.
+- **Focus**: Validate business scenarios end-to-end (recurring billing lifecycle, dispute flows, compliance queries).
+- **Artifacts**: Test scripts derived from acceptance tests (AT-1 to AT-10).
+
+## Test Environments & Data
+- **Local**: Docker Compose stack for rapid iteration with seeded merchant/customer data.
+- **CI**: Ephemeral environments spun via containers for unit/component/contract tests.
+- **Staging**: Mirrors production with masked data, integrates with Authorize.Net sandbox and S3-compatible storage.
+- **Data Management**: Synthetic data sets with realistic volumes; anonymized snapshots for staging.
+
+## Automation & Toolchain
+- **Build/Test Runner**: Gradle or Maven with profiles for unit, component, integration suites.
+- **CI/CD Integration**: GitHub Actions (or equivalent) executing tiered pipelines (unit → component → integration → performance smoke → deployment).
+- **Static Analysis**: SpotBugs, Checkstyle, SonarQube integration for maintainability and security hotspots.
+- **Secrets Scanning**: Trufflehog or GitHub secret scanning enforced on commits.
+
+## Test Data Strategy
+- **Deterministic Fixtures**: Reusable datasets per test type with isolated merchant IDs.
+- **Randomized Inputs**: Use property-based testing for edge cases in domain logic (amount rounding, schedule calculations).
+- **Gateway Simulation**: Mock servers for Authorize.Net during unit/component tests; sandbox for integration.
+
+## Reporting & Governance
+- **Dashboards**: CI pipeline status, coverage trends, performance baselines in Grafana.
+- **Artefacts**: Store test reports (JUnit XML, coverage HTML, k6 summaries) in centralized storage per run.
+- **Traceability**: Map tests to requirements (FR/NFR) in tracking document for auditability.
+
+## Exit Criteria for Release
+- All critical and high-severity defects resolved.
+- All acceptance tests (AT-1 to AT-10) pass in staging.
+- Non-functional benchmarks meet SLA/SLO targets (latency, availability, throughput).
+- Security scans show no unresolved high/critical vulnerabilities; compliance checks signed off.
+- Observability dashboards reviewed and approved by engineering + SRE.
+
+## Continuous Improvement
+- Post-release testing review capturing incidents, gaps, and new scenarios.
+- Update testing strategy quarterly or on major architectural changes (e.g., extracting modules, scaling new tenants).
+- Extend automation coverage as new features (e.g., additional payment methods) are introduced.
+

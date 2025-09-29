@@ -1,0 +1,33 @@
+# Build artifacts
+.gradle/
+.idea/
+.vscode/
+*.iml
+
+# Gradle build outputs (keep jars)
+build/*
+!build/libs/
+!build/libs/*.jar
+.gradle/
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Version control
+.git
+.gitignore
+
+# Logs
+*.log
+
+# Node and Python leftovers (defensive)
+node_modules/
+env/
+venv/
+

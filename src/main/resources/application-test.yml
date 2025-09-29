@@ -1,0 +1,29 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:payments;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: sa
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: false
+  rabbitmq:
+    listener:
+      simple:
+        auto-startup: false
+
+security:
+  jwt:
+    secret: "dGhpcy1pcy1hLXN1cGVyLXNlY3JldC1leGFtcGxlLXN0cmluZw=="
+    expiration-seconds: 3600
+
+authorize-net:
+  api-login-id: test-login
+  transaction-key: test-key
+  endpoint: https://apitest.authorize.net/xml/v1/request.api
+  webhook-signature-key: test-signature

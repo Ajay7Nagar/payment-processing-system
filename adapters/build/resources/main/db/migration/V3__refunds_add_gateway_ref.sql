@@ -1,2 +1,0 @@
-ALTER TABLE refunds ADD COLUMN IF NOT EXISTS gateway_ref VARCHAR(128);
-

@@ -1,329 +1,385 @@
 openapi: 3.0.3
 info:
   title: Payment Processing System API
-  version: "1.0.0"
-  description: REST API for payments, refunds, and subscriptions. Currency fixed to INR for v1.
+  version: 1.0.0
 servers:
-  - url: /
-security:
-  - bearerAuth: []
+  - url: https://api.example.com
+    description: Production
+  - url: https://staging.api.example.com
+    description: Staging
 paths:
-  /v1/payments/purchase:
+  /api/v1/payments/purchase:
     post:
-      summary: Purchase (auth+capture)
-      operationId: purchase
-      parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
+      summary: Execute purchase (auth+capture)
+      operationId: purchasePayment
+      tags: [Payments]
+      security:
+        - bearerAuth: [PAYMENTS_WRITE]
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/PurchaseRequest'
-            examples:
-              ok:
-                value:
-                  orderId: order-123
-                  amount: { amount: "10.00", currency: INR }
-                  paymentToken: tok_opaque
       responses:
         '201':
-          description: Created
-          headers:
-            X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
-            X-API-Version: { $ref: '#/components/headers/ApiVersion' }
+          description: Payment created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Payment'
-              examples:
-                created:
-                  value:
-                    id: order-123
-                    amount: { amount: "10.00", currency: INR }
-                    status: CAPTURED
-                    createdAt: 2025-09-28T12:00:00Z
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '500': { $ref: '#/components/responses/ServerError' }
-  /v1/payments/authorize:
+                $ref: '#/components/schemas/PaymentResponse'
+        '400':
+          description: Validation error
+        '401':
+          description: Unauthorized
+  /api/v1/payments/authorize:
     post:
-      summary: Authorize payment (auth-only)
-      operationId: authorize
+      summary: Authorize payment
+      operationId: authorizePayment
+      tags: [Payments]
+      security:
+        - bearerAuth: [PAYMENTS_WRITE]
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/AuthorizeRequest'
-            examples:
-              ok:
-                value:
-                  orderId: order-123
-                  amount: { amount: "10.00", currency: INR }
-                  paymentToken: tok_opaque
       responses:
         '201':
-          description: Authorized
-          headers:
-            X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
-            X-API-Version: { $ref: '#/components/headers/ApiVersion' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '500': { $ref: '#/components/responses/ServerError' }
-  /v1/payments/capture:
+          description: Authorization created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+  /api/v1/payments/capture:
     post:
-      summary: Capture an authorization
-      operationId: capture
+      summary: Capture authorized payment
+      operationId: capturePayment
+      tags: [Payments]
+      security:
+        - bearerAuth: [PAYMENTS_WRITE]
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/CaptureRequest'
-            examples:
-              ok:
-                value:
-                  authorizationId: pi-order-123
-                  amount: { amount: "5.00", currency: INR }
       responses:
         '200':
-          description: Captured
-          headers:
-            X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
-            X-API-Version: { $ref: '#/components/headers/ApiVersion' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '500': { $ref: '#/components/responses/ServerError' }
-  /v1/payments/cancel:
+          description: Capture successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+  /api/v1/payments/cancel:
     post:
-      summary: Cancel (void) an authorization
-      operationId: cancelAuthorization
-      parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
+      summary: Cancel authorized payment
+      operationId: cancelPayment
+      tags: [Payments]
+      security:
+        - bearerAuth: [PAYMENTS_WRITE]
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/CancelRequest'
-            examples:
-              ok:
-                value:
-                  authorizationId: pi-order-123
       responses:
         '200':
-          description: Voided
-          headers:
-            X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
-            X-API-Version: { $ref: '#/components/headers/ApiVersion' }
+          description: Cancellation successful
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CancelResponse'
-              examples:
-                ok:
-                  value:
-                    authorizationId: pi-order-123
-                    status: CANCELED
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '500': { $ref: '#/components/responses/ServerError' }
-  /v1/payments/refund:
+                $ref: '#/components/schemas/PaymentResponse'
+  /api/v1/payments/refund:
     post:
-      summary: Create a refund (full or partial)
-      operationId: refund
-      parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
+      summary: Refund settled payment
+      operationId: refundPayment
+      tags: [Payments]
+      security:
+        - bearerAuth: [PAYMENTS_WRITE]
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/RefundRequest'
-            examples:
-              full:
-                value:
-                  chargeId: ch-order-123
-              partial:
-                value:
-                  chargeId: ch-order-123
-                  amount: { amount: "3.00", currency: INR }
       responses:
-        '201':
+        '202':
           description: Refund accepted
-          headers:
-            X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
-            X-API-Version: { $ref: '#/components/headers/ApiVersion' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '500': { $ref: '#/components/responses/ServerError' }
-  /v1/subscriptions:
+  /api/v1/subscriptions:
     post:
       summary: Create subscription
       operationId: createSubscription
+      tags: [Subscriptions]
+      security:
+        - bearerAuth: [SUBSCRIPTIONS_WRITE]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SubscriptionCreateRequest'
+              $ref: '#/components/schemas/CreateSubscriptionRequest'
       responses:
-        '201': { description: Created }
-  /v1/subscriptions/{id}/cancel:
-    post:
-      summary: Cancel subscription
-      operationId: cancelSubscription
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: string }
-      responses:
-        '200': { description: Canceled }
-  /v1/transactions:
+        '201':
+          description: Subscription created
     get:
-      summary: List transactions
-      operationId: listTransactions
+      summary: List subscriptions
+      operationId: listSubscriptions
+      tags: [Subscriptions]
+      security:
+        - bearerAuth: [SUBSCRIPTIONS_READ]
       parameters:
-        - name: limit
+        - name: page
           in: query
-          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
-        - name: nextCursor
+          schema:
+            type: integer
+            default: 0
+        - name: size
           in: query
-          schema: { type: string, description: Opaque cursor returned by previous call }
-        - name: status
-          in: query
-          schema: { type: string }
+          schema:
+            type: integer
+            default: 20
       responses:
         '200':
-          description: OK
-          headers:
-            X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
-            X-API-Version: { $ref: '#/components/headers/ApiVersion' }
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ListTransactionsResponse'
-  /v1/webhooks/authorize-net:
-    post:
-      summary: Authorize.Net webhook receiver
-      operationId: webhookAuthorizeNet
-      security: []
+          description: Page of subscriptions
+  /api/v1/subscriptions/{subscriptionId}:
+    get:
+      summary: Get subscription by ID
+      operationId: getSubscription
+      tags: [Subscriptions]
+      security:
+        - bearerAuth: [SUBSCRIPTIONS_READ]
       parameters:
-        - name: X-Signature
-          in: header
-          required: false
-          schema: { type: string }
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema: { type: integer, format: int64 }
+        - name: subscriptionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200': { description: Subscription details }
+  /api/v1/settlement/export:
+    post:
+      summary: Trigger settlement export
+      operationId: requestSettlementExport
+      tags: [Settlement]
+      security:
+        - bearerAuth: [SETTLEMENT_EXPORT]
       requestBody:
         required: true
         content:
           application/json:
-            schema: { type: object, additionalProperties: true }
+            schema:
+              $ref: '#/components/schemas/SettlementExportRequest'
       responses:
-        '200': { description: Acked }
+        '202': { description: Export accepted }
+  /api/v1/compliance/audit-logs:
+    get:
+      summary: Query audit logs
+      operationId: queryAuditLogs
+      tags: [Compliance]
+      security:
+        - bearerAuth: [COMPLIANCE_OFFICER]
+      parameters:
+        - name: start
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: end
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: actor
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Page of audit logs
+  /api/v1/compliance/audit-logs/export:
+    post:
+      summary: Export audit logs
+      operationId: exportAuditLogs
+      tags: [Compliance]
+      security:
+        - bearerAuth: [COMPLIANCE_OFFICER]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComplianceAuditExportRequest'
+      responses:
+        '200':
+          description: Export payload
+  /api/v1/webhooks/authorize-net:
+    post:
+      summary: Receive Authorize.Net webhook
+      operationId: receiveAuthorizeNetWebhook
+      tags: [Webhooks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorizeNetWebhookRequest'
+      responses:
+        '202':
+          description: Webhook accepted and queued
 components:
-  parameters:
-    IdempotencyKey:
-      name: X-Idempotency-Key
-      in: header
-      required: false
-      schema: { type: string, maxLength: 200 }
-      description: Idempotency key scoped per merchant and endpoint, TTL 24h.
-  headers:
-    CorrelationId:
-      description: Correlation id for tracing
-      schema: { type: string }
-    ApiVersion:
-      description: API version corresponding to this response
-      schema: { type: string, example: v1 }
-  responses:
-    Unauthorized:
-      description: Unauthorized
-    Conflict:
-      description: Conflict
-    Unprocessable:
-      description: Unprocessable entity
-    ServerError:
-      description: Server error
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
   schemas:
-    Money:
-      type: object
-      required: [ amount, currency ]
-      properties:
-        amount: { type: string, pattern: "^\\d+\\.\\d{2}$" }
-        currency: { type: string, enum: [ INR ] }
     PurchaseRequest:
       type: object
-      required: [ orderId, amount, paymentToken ]
+      required: [customerId, amount, currency, paymentNonce, idempotencyKey, correlationId, requestId]
       properties:
-        orderId: { type: string }
-        amount: { $ref: '#/components/schemas/Money' }
-        paymentToken: { type: string }
-    AuthorizeRequest:
+        customerId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+          format: double
+        currency:
+          type: string
+        paymentNonce:
+          type: string
+        idempotencyKey:
+          type: string
+        correlationId:
+          type: string
+        requestId:
+          type: string
+    PaymentResponse:
       type: object
-      required: [ orderId, amount, paymentToken ]
       properties:
-        orderId: { type: string }
-        amount: { $ref: '#/components/schemas/Money' }
-        paymentToken: { type: string }
+        orderId:
+          type: string
+          format: uuid
+        customerId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        currency:
+          type: string
+        status:
+          type: string
+        correlationId:
+          type: string
+    AuthorizeRequest:
+      allOf:
+        - $ref: '#/components/schemas/PurchaseRequest'
     CaptureRequest:
       type: object
-      required: [ authorizationId ]
+      required: [orderId, amount, actorId]
       properties:
-        authorizationId: { type: string }
-        amount: { $ref: '#/components/schemas/Money' }
+        orderId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        actorId:
+          type: string
     CancelRequest:
       type: object
-      required: [ authorizationId ]
+      required: [orderId, actorId]
       properties:
-        authorizationId: { type: string }
+        orderId:
+          type: string
+          format: uuid
+        actorId:
+          type: string
     RefundRequest:
       type: object
-      required: [ chargeId ]
+      required: [orderId, amount, lastFour, actorId]
       properties:
-        chargeId: { type: string }
-        amount: { $ref: '#/components/schemas/Money' }
-    Payment:
-      type: object
-      required: [ id, amount, status, createdAt ]
-      properties:
-        id: { type: string }
-        amount: { $ref: '#/components/schemas/Money' }
-        status: { type: string, enum: [ CAPTURED, AUTHORIZED, CANCELED ] }
-        createdAt: { type: string, format: date-time }
-    CancelResponse:
-      type: object
-      required: [ authorizationId, status ]
-      properties:
-        authorizationId: { type: string }
-        status: { type: string, enum: [ CANCELED ] }
-    Transaction:
-      type: object
-      required: [ id, amount, status, createdAt ]
-      properties:
-        id: { type: string }
-        amount: { $ref: '#/components/schemas/Money' }
-        status: { type: string }
-        createdAt: { type: string, format: date-time }
-    ListTransactionsResponse:
-      type: object
-      required: [ items ]
-      properties:
-        items:
-          type: array
-          items: { $ref: '#/components/schemas/Transaction' }
-        nextCursor:
+        orderId:
           type: string
+          format: uuid
+        amount:
+          type: number
+        lastFour:
+          type: string
+        actorId:
+          type: string
+    CreateSubscriptionRequest:
+      type: object
+      required: [customerId, planCode, amount, currency, intervalDays, idempotencyKey]
+      properties:
+        customerId:
+          type: string
+          format: uuid
+        planCode:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        intervalDays:
+          type: integer
+        trialDays:
+          type: integer
+        idempotencyKey:
+          type: string
+        correlationId:
+          type: string
+    SettlementExportRequest:
+      type: object
+      required: [format, start, end]
+      properties:
+        format:
+          type: string
+          enum: [CSV, JSON]
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+        filePath:
+          type: string
+    ComplianceAuditExportRequest:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+        actor:
+          type: string
+        operation:
+          type: string
+        resourceType:
+          type: string
+        resourceId:
+          type: string
+    AuthorizeNetWebhookRequest:
+      type: object
+      required: [eventId, eventType, payload]
+      properties:
+        eventId:
+          type: string
+        eventType:
+          type: string
+        payload:
+          type: object

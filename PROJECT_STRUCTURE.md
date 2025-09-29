@@ -1,47 +1,47 @@
-# Project Structure – Option C (Hexagonal with Boot Modules)
+# Project Structure
 
-The repository follows a hexagonal (ports-and-adapters) layout with dedicated boot modules for the API and the Worker.
+## Overview
+The project follows the **Layered + Bounded Context Roots** layout (Alternative B), organizing code by adapters, application orchestration, domain contexts, infrastructure, and worker runtime. This structure supports the modular monolith architecture while keeping REST APIs, messaging endpoints, and persistence adapters aligned with domain-driven boundaries.
 
-```bash
-payment-processing-system/
-├─ pom.xml                         # Maven aggregator (parent)
-├─ boot-api/                       # API boot module (wiring and API runtime)
-│  ├─ pom.xml
-│  └─ src/
-│     ├─ main/java/com/acme/payments/bootapi/   # API Spring Boot main and module wiring
-│     └─ main/resources/                        # API configuration (YAML/properties), logging config
-├─ boot-worker/                    # Worker boot module (wiring and worker runtime)
-│  ├─ pom.xml
-│  └─ src/
-│     ├─ main/java/com/acme/payments/bootworker/ # Worker Spring Boot main and module wiring
-│     └─ main/resources/                         # Worker configuration (YAML/properties), logging config
-├─ core/                           # Business logic (framework-agnostic)
-│  ├─ pom.xml
-│  └─ src/main/java/com/acme/payments/core/
-│     ├─ domain/                   # Entities, value objects, policies, domain events
-│     └─ application/              # Use-cases/services, ports (interfaces), state machines
-├─ adapters/                       # I/O adapters (implement ports)
-│  ├─ pom.xml
-│  └─ src/main/java/com/acme/payments/adapters/
-│     ├─ in/web/                   # REST controllers, request/response models, error mapping
-│     ├─ in/webhook/               # Webhook receiver and request verification
-│     ├─ out/db/                   # Persistence adapter (repositories, mappings, migrations)
-│     ├─ out/queue/                # Queue adapter (Redis Streams producers/consumers)
-│     └─ out/gateway/              # Payment gateway adapter (Authorize.Net client integration)
-└─ tests/                          # Cross-module tests
-   ├─ pom.xml
-   └─ src/test/java/               # Contract, integration, and end-to-end tests
+## Layout
+```
+/src/main/java/com/example/payments
+├── adapters
+│   ├── api
+│   ├── messaging
+│   └── persistence
+├── application
+│   ├── orchestration
+│   ├── scheduling
+│   └── services
+├── domain
+│   ├── billing
+│   ├── payments
+│   ├── reporting
+│   └── shared
+├── infra
+└── worker
 ```
 
-## Folder purposes
-- `pom.xml`: Aggregates modules and manages shared dependencies and plugin configuration.
-- `boot-api/`: Boot module for the API runtime; application entrypoint, module wiring, and API-specific configuration.
-- `boot-worker/`: Boot module for the Worker runtime; application entrypoint, module wiring, and worker-specific configuration.
-- `core/domain/`: Business domain model and policies; pure domain types and events.
-- `core/application/`: Application services and ports; orchestration and state machines independent of I/O.
-- `adapters/in/web/`: Inbound web adapter exposing REST endpoints and mapping requests/responses.
-- `adapters/in/webhook/`: Inbound adapter for webhook intake and verification.
-- `adapters/out/db/`: Outbound adapter for persistence; repository implementations and database mappings.
-- `adapters/out/queue/`: Outbound adapter for messaging via the queue.
-- `adapters/out/gateway/`: Outbound adapter for the external payment gateway integration.
-- `tests/`: Cross-cutting tests (contract/integration/e2e) across modules.
+### `adapters`
+- `api`: Hosts REST controllers, request/response mapping, and HTTP exception translation aligned with the API gateway responsibilities.
+- `messaging`: Contains RabbitMQ publishers, consumers, and message converters bridging async workers with the domain layer.
+- `persistence`: Provides Spring Data implementations, entity mapping configuration, and transactional adapters for the shared persistence layer.
+
+### `application`
+- `orchestration`: Coordinates multi-step use cases across bounded contexts, enforcing idempotency and transaction boundaries.
+- `scheduling`: Defines cron triggers, queue enqueue logic, and job orchestration for recurring billing and settlements.
+- `services`: Exposes application-level facades invoked by adapters to execute domain workflows.
+
+### `domain`
+- `billing`: Encapsulates subscription lifecycle rules, dunning policies, and billing aggregates.
+- `payments`: Models payment orders, transactions, and state transitions for purchase/refund flows.
+- `reporting`: Manages settlement projections, export preparation, and audit-oriented domain logic.
+- `shared`: Holds reusable value objects, domain events, and exception types that span contexts.
+
+### `infra`
+- Centralizes Spring configuration, security setup, observability utilities, feature toggles, and cross-cutting platform services shared across modules.
+
+### `worker`
+- Provides the asynchronous worker entry point, queue listener wiring, and retry management aligned with the async worker module.
+

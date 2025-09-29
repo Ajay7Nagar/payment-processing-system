@@ -1,0 +1,65 @@
+spring:
+  application:
+    name: payment-processing-system
+  datasource:
+    url: jdbc:postgresql://localhost:5432/payments
+    username: payments_user
+    password: changeit
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+    open-in-view: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:guest}
+    password: ${SPRING_RABBITMQ_PASSWORD:guest}
+    virtual-host: ${SPRING_RABBITMQ_VHOST:/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, prometheus, trace
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+  tracing:
+    exporter:
+      zipkin:
+        enabled: true
+        endpoint: ${MANAGEMENT_TRACING_EXPORTER_ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
+    sampling:
+      probability: 0.1
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+subscription:
+  retry:
+    auto-cancel-days: 30
+    schedule-cron: "0 */5 * * * *"
+
+security:
+  jwt:
+    secret: "dGhpcy1pcy1hLXN1cGVyLXNlY3JldC1leGFtcGxlLXN0cmluZw=="
+    expiration-seconds: 3600
+    issuer: "payments-system"
+    audience: "payments-clients"
+
+authorize-net:
+  api-login-id: "${AUTHORIZE_NET_LOGIN_ID:dummy-login}"
+  transaction-key: "${AUTHORIZE_NET_TRANSACTION_KEY:dummy-key}"
+  endpoint: "https://apitest.authorize.net/xml/v1/request.api"
+  webhook-signature-key: "${AUTHORIZE_NET_SIGNATURE_KEY:dummy-signature}"
