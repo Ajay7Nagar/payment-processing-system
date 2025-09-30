@@ -1,88 +1,43 @@
-# Gradle
+# Environment-specific secrets
+.env
+
+# Gradle & build outputs
 .gradle/
+/build/
 **/build/
 **/out/
-gradle-app.setting
+**/libs/
 
-# IDEs & tooling
+# IDE project files
 .idea/
+.vscode/
 *.iml
 *.ipr
 *.iws
 .project
 .classpath
 .settings/
-.vscode/
 
-# OS & editor noise
+# System artifacts
 .DS_Store
 Thumbs.db
-*.swp
-*.swo
 
-# Reports & coverage
-**/reports/
-**/jacoco/
-**/test-results/
-
-# Logs & runtime
-**/*.log
-hs_err_pid*
-
-# Generated artifacts
-**/libs/
-/build/
-
-# Compiled class file
-*.class
-
-# Log file
+# Logs & reports
 *.log
+hs_err_pid*
+replay_pid*
+**/reports/
+**/test-results/
+**/jacoco/
 
-# BlueJ files
-*.ctxt
-
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
-*.jar
-*.war
-*.nar
-*.ear
+# Generated archives
 *.zip
 *.tar.gz
 *.rar
+*.war
+*.ear
+*.jar
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
-hs_err_pid*
-replay_pid*
-
-.gitignore
-.gradle/
-.idea/
-.vscode/
-*.iml
-*.ipr
-*.iws
-.classpath
-.project
-.settings/
-
-# Build directories
-/build/
-**/build/
-**/out/
-
-# Logs and reports
-*.log
-**/jacoco/
-**/reports/
-**/test-results/
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Gradle Wrapper cache
-gradle-app.setting
+# Editor swap files
+*.swp
+*.swo

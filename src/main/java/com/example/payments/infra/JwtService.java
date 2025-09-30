@@ -1,80 +1,70 @@
 package com.example.payments.infra;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
+import java.security.Key;
 import java.time.Instant;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.oauth2.jwt.BadJwtException;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtClaimsSet;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.JwtEncoder;
-import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
-import org.springframework.security.oauth2.jwt.JwtException;
-import org.springframework.security.oauth2.jwt.JwtValidationException;
 import org.springframework.stereotype.Component;
 
 @Component
 public class JwtService {
 
     private static final String ROLES_CLAIM = "roles";
-
+    private final Key signingKey;
     private final JwtProperties properties;
-    private final JwtDecoder jwtDecoder;
-    private final JwtEncoder jwtEncoder;
 
-    public JwtService(JwtProperties properties, JwtDecoder jwtDecoder, JwtEncoder jwtEncoder) {
+    public JwtService(JwtProperties properties) {
         this.properties = properties;
-        this.jwtDecoder = jwtDecoder;
-        this.jwtEncoder = jwtEncoder;
+        this.signingKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(properties.getSecret()));
     }
 
     public String createToken(String subject, Collection<? extends GrantedAuthority> authorities) {
         Instant now = Instant.now();
         Instant expiresAt = now.plusSeconds(properties.getExpirationSeconds());
+        
+        List<String> roles = authorities.stream()
+                .map(GrantedAuthority::getAuthority)
+                .map(authority -> authority.replace("ROLE_", ""))
+                .toList();
 
-        JwtClaimsSet.Builder claimsBuilder = JwtClaimsSet.builder()
-                .issuedAt(now)
-                .expiresAt(expiresAt)
-                .subject(subject)
-                .claim(ROLES_CLAIM, authorities.stream().map(GrantedAuthority::getAuthority).toList());
-
-        if (properties.getIssuer() != null) {
-            claimsBuilder.issuer(properties.getIssuer());
-        }
-
-        if (properties.getAudience() != null) {
-            claimsBuilder.audience(List.of(properties.getAudience()));
-        }
-
-        JwtClaimsSet claims = claimsBuilder.build();
-        return jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
+        return Jwts.builder()
+                .setSubject(subject)
+                .claim(ROLES_CLAIM, roles)
+                .setIssuedAt(Date.from(now))
+                .setExpiration(Date.from(expiresAt))
+                .setIssuer(properties.getIssuer())
+                .setAudience(properties.getAudience())
+                .signWith(signingKey, SignatureAlgorithm.HS256)
+                .compact();
     }
 
-    public Jwt decode(String token) {
-        try {
-            return jwtDecoder.decode(token);
-        } catch (JwtValidationException ex) {
-            throw new BadCredentialsException(ex.getMessage(), ex);
-        } catch (JwtException ex) {
-            throw new BadJwtException(ex.getMessage(), ex);
-        }
+    public String extractSubject(String token) {
+        Claims claims = parseToken(token);
+        return claims.getSubject();
     }
 
-    public Collection<? extends GrantedAuthority> extractAuthorities(Jwt jwt) {
-        Object rolesClaim = jwt.getClaim(ROLES_CLAIM);
-        if (rolesClaim instanceof Collection<?> roles) {
-            return roles.stream()
-                    .filter(String.class::isInstance)
-                    .map(String.class::cast)
-                    .map(SimpleGrantedAuthority::new)
-                    .collect(Collectors.toSet());
+    @SuppressWarnings("unchecked")
+    public List<String> extractRoles(String token) {
+        Claims claims = parseToken(token);
+        Object rolesObj = claims.get(ROLES_CLAIM);
+        if (rolesObj instanceof List<?>) {
+            return (List<String>) rolesObj;
         }
-        return Set.of();
+        return List.of();
+    }
+
+    private Claims parseToken(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(signingKey)
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
     }
 }
-

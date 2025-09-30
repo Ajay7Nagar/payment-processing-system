@@ -21,6 +21,7 @@ public class AuthorizeNetProperties {
     private String webhookSignatureKey;
 
     private String acceptPaymentDescriptor = "COMMON.ACCEPT.INAPP.PAYMENT";
+    private String defaultCurrency = "USD";
 
     public String getApiLoginId() {
         return apiLoginId;
@@ -60,5 +61,13 @@ public class AuthorizeNetProperties {
 
     public void setAcceptPaymentDescriptor(String acceptPaymentDescriptor) {
         this.acceptPaymentDescriptor = acceptPaymentDescriptor;
+    }
+
+    public String getDefaultCurrency() {
+        return defaultCurrency;
+    }
+
+    public void setDefaultCurrency(String defaultCurrency) {
+        this.defaultCurrency = defaultCurrency;
     }
 }

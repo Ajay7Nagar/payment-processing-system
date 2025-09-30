@@ -53,7 +53,7 @@ subscription:
 
 security:
   jwt:
-    secret: "dGhpcy1pcy1hLXN1cGVyLXNlY3JldC1leGFtcGxlLXN0cmluZw=="
+    secret: "ZHNsa2YzNzlLOHJ1ZzQySWFiNkZsU2UzTnhpU0J6VTRqZkpnd0t4VzFRTlJ3Ukh5aXAzTHN4RDJneHhQSlR1MDk3bUYyV3lyQTM4UWRhUw=="
     expiration-seconds: 3600
     issuer: "payments-system"
     audience: "payments-clients"
@@ -63,3 +63,4 @@ authorize-net:
   transaction-key: "${AUTHORIZE_NET_TRANSACTION_KEY:dummy-key}"
   endpoint: "https://apitest.authorize.net/xml/v1/request.api"
   webhook-signature-key: "${AUTHORIZE_NET_SIGNATURE_KEY:dummy-signature}"
+  default-currency: "${AUTHORIZE_NET_DEFAULT_CURRENCY:USD}"

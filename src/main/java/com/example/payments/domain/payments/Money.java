@@ -31,6 +31,10 @@ public record Money(BigDecimal amount, String currency) {
         return new Money(this.amount.add(other.amount), this.currency);
     }
 
+    public static Money zero(String currency) {
+        return new Money(BigDecimal.ZERO, currency);
+    }
+
     private void validateCurrency(Money other) {
         if (!this.currency.equals(other.currency)) {
             throw new IllegalArgumentException("Currency mismatch");

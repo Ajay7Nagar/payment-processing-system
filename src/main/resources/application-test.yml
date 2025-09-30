@@ -27,3 +27,4 @@ authorize-net:
   transaction-key: test-key
   endpoint: https://apitest.authorize.net/xml/v1/request.api
   webhook-signature-key: test-signature
+  default-currency: USD

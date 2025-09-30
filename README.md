@@ -27,17 +27,23 @@ Detailed diagrams and design trade-offs are captured in `Architecture.md`.
 - Docker + Docker Compose (for local infrastructure)
 
 ### Environment Variables
-Create a `.env` file or export environment variables before running containers:
+The Docker stack consumes environment variables from a `.env` file in the project root (fallback to host env). Create the file before running `docker compose`:
 ```
+# Authorize.Net sandbox credentials
 AUTHORIZE_NET_LOGIN_ID=<sandbox login>
-AUTHORIZE_NET_TRANSACTION_KEY=<sandbox key>
-AUTHORIZE_NET_SIGNATURE_KEY=<hex signature key>
-SECURITY_JWT_SECRET=<base64-encoded symmetric key for tests/dev>
+AUTHORIZE_NET_TRANSACTION_KEY=<sandbox transaction key>
+AUTHORIZE_NET_SIGNATURE_KEY=<sandbox signature key>
+AUTHORIZE_NET_DEFAULT_CURRENCY=USD
+
+# JWT signing key (must decode to at least 64 bytes for HS512)
+SECURITY_JWT_SECRET=<base64-encoded random 64-byte secret>
+
+# Optional overrides
 SPRING_RABBITMQ_HOST=rabbitmq
 SPRING_RABBITMQ_PORT=5672
 ```
 
-Local defaults are provided in `application.yml`; production secrets should be injected via Kubernetes secrets.
+Local defaults remain in `application.yml`, but secrets **must** come from environment variables (for production, inject via your secret manager/Kubernetes).
 
 ### Bootstrapping Locally
 ```bash

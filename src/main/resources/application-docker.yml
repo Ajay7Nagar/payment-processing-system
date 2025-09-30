@@ -4,3 +4,9 @@ management:
       zipkin:
         enabled: true
         endpoint: http://zipkin:9411/api/v2/spans
+
+spring:
+  data:
+    redis:
+      host: redis
+      port: 6379

@@ -2,9 +2,6 @@ package com.example.payments.infra;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
-import java.util.Base64;
-import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
@@ -52,11 +49,6 @@ public class JwtProperties {
 
     public void setAudience(String audience) {
         this.audience = audience;
-    }
-
-    public SecretKey toSecretKey() {
-        byte[] decoded = Base64.getDecoder().decode(secret);
-        return new SecretKeySpec(decoded, "HmacSHA256");
     }
 }
 

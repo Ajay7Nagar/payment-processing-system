@@ -28,7 +28,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -37,7 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = SubscriptionController.class)
-@Import(TestSecurityConfiguration.class)
+@Import(com.example.payments.testsupport.TestSecurityConfiguration.class)
 class SubscriptionControllerTest {
 
     @Autowired
@@ -98,8 +97,7 @@ class SubscriptionControllerTest {
                 .content(payload)
                 .header("Idempotency-Key", idempotencyKey)
                 .header("X-Correlation-Id", correlationId)
-                .with(user("writer").roles("SUBSCRIPTIONS_WRITE"))
-                .with(csrf()))
+                .with(user("writer").roles("SUBSCRIPTIONS_WRITE")))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.planCode").value("PLAN_BASIC"))
                 .andExpect(jsonPath("$.amount").value("49.99"));
@@ -133,8 +131,7 @@ class SubscriptionControllerTest {
                 .content(payload)
                 .header("Idempotency-Key", idempotencyKey)
                 .header("X-Correlation-Id", correlationId)
-                .with(user("reader").roles("PAYMENTS_READ"))
-                .with(csrf()))
+                .with(user("reader").roles("PAYMENTS_READ")))
                 .andExpect(status().isForbidden());
     }
 
@@ -170,8 +167,7 @@ class SubscriptionControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(payload)
                 .header("Idempotency-Key", idempotencyKey)
-                .with(user("writer").roles("SUBSCRIPTIONS_WRITE"))
-                .with(csrf()))
+                .with(user("writer").roles("SUBSCRIPTIONS_WRITE")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.planCode").value("PLAN_BASIC"));
 
@@ -204,8 +200,7 @@ class SubscriptionControllerTest {
         mockMvc.perform(post("/api/v1/subscriptions/{subscriptionId}/resume", subscriptionId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(payload)
-                .with(user("writer").roles("SUBSCRIPTIONS_WRITE"))
-                .with(csrf()))
+                .with(user("writer").roles("SUBSCRIPTIONS_WRITE")))
                 .andExpect(status().isOk());
 
         ArgumentCaptor<OffsetDateTime> captor = ArgumentCaptor.forClass(OffsetDateTime.class);

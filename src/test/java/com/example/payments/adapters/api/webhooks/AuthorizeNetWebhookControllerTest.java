@@ -26,7 +26,6 @@ import org.springframework.context.annotation.Import;
 
 @WebMvcTest(controllers = AuthorizeNetWebhookController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import(TestSecurityConfiguration.class)
 class AuthorizeNetWebhookControllerTest {
 
     @Autowired
