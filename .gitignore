@@ -37,6 +37,7 @@ replay_pid*
 *.war
 *.ear
 *.jar
+!gradle/wrapper/gradle-wrapper.jar
 
 # Editor swap files
 *.swp
