@@ -2,45 +2,32 @@ package com.example.payments.domain.user;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
-import java.util.HashSet;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Entity
-@Table(name = "roles")
-public class Role {
+@Table(name = "claims")
+public class Claim {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
-    @Column(nullable = false, unique = true, length = 64)
+    @Column(nullable = false, unique = true, length = 128)
     private String code;
 
     @Column(length = 255)
     private String description;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "role_claims",
-            joinColumns = @JoinColumn(name = "role_id"),
-            inverseJoinColumns = @JoinColumn(name = "claim_id"))
-    private Set<Claim> claims = new HashSet<>();
-
-    protected Role() {
+    protected Claim() {
         // for JPA
     }
 
-    public Role(String code, String description) {
+    public Claim(String code, String description) {
         this.code = code;
         this.description = description;
     }
@@ -65,26 +52,6 @@ public class Role {
         this.description = description;
     }
 
-    public Set<Claim> getClaims() {
-        return claims;
-    }
-
-    public void setClaims(Set<Claim> claims) {
-        this.claims = claims;
-    }
-
-    public void addClaim(Claim claim) {
-        this.claims.add(claim);
-    }
-
-    public void removeClaim(Claim claim) {
-        this.claims.remove(claim);
-    }
-
-    public Set<String> getClaimCodes() {
-        return claims.stream().map(Claim::getCode).collect(java.util.stream.Collectors.toSet());
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -93,8 +60,8 @@ public class Role {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        Role role = (Role) o;
-        return id != null && id.equals(role.id);
+        Claim claim = (Claim) o;
+        return id != null && id.equals(claim.id);
     }
 
     @Override
@@ -102,3 +69,7 @@ public class Role {
         return Objects.hashCode(id);
     }
 }
+
+
+
+

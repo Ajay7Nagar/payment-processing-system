@@ -26,7 +26,7 @@ public class SettlementExportController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('SETTLEMENT_EXPORT')")
+    @PreAuthorize("hasAuthority('SETTLEMENT_EXPORT_REQUEST')")
     public ResponseEntity<SettlementExportResponse> requestExport(@Valid @RequestBody SettlementExportRequest request) {
         OffsetDateTime start = request.start();
         OffsetDateTime end = request.end();

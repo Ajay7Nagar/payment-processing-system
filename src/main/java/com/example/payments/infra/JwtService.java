@@ -9,14 +9,16 @@ import java.security.Key;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Date;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Component;
 
 @Component
 public class JwtService {
 
-    private static final String ROLES_CLAIM = "roles";
+    private static final String CLAIMS_CLAIM = "claims";
     private final Key signingKey;
     private final JwtProperties properties;
 
@@ -29,14 +31,15 @@ public class JwtService {
         Instant now = Instant.now();
         Instant expiresAt = now.plusSeconds(properties.getExpirationSeconds());
         
-        List<String> roles = authorities.stream()
+        List<String> claims = authorities.stream()
                 .map(GrantedAuthority::getAuthority)
-                .map(authority -> authority.replace("ROLE_", ""))
+                .collect(Collectors.toCollection(LinkedHashSet::new))
+                .stream()
                 .toList();
 
         return Jwts.builder()
                 .setSubject(subject)
-                .claim(ROLES_CLAIM, roles)
+                .claim(CLAIMS_CLAIM, claims)
                 .setIssuedAt(Date.from(now))
                 .setExpiration(Date.from(expiresAt))
                 .setIssuer(properties.getIssuer())
@@ -51,11 +54,14 @@ public class JwtService {
     }
 
     @SuppressWarnings("unchecked")
-    public List<String> extractRoles(String token) {
+    public List<String> extractClaims(String token) {
         Claims claims = parseToken(token);
-        Object rolesObj = claims.get(ROLES_CLAIM);
-        if (rolesObj instanceof List<?>) {
-            return (List<String>) rolesObj;
+        Object claimObj = claims.get(CLAIMS_CLAIM);
+        if (claimObj instanceof List<?>) {
+            return ((List<?>) claimObj).stream()
+                    .filter(String.class::isInstance)
+                    .map(String.class::cast)
+                    .toList();
         }
         return List.of();
     }

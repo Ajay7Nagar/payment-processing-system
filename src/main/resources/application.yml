@@ -3,8 +3,8 @@ spring:
     name: payment-processing-system
   datasource:
     url: jdbc:postgresql://localhost:5432/payments
-    username: payments_user
-    password: changeit
+    username: payments
+    password: payments
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -21,8 +21,8 @@ spring:
   rabbitmq:
     host: ${SPRING_RABBITMQ_HOST:localhost}
     port: ${SPRING_RABBITMQ_PORT:5672}
-    username: ${SPRING_RABBITMQ_USERNAME:guest}
-    password: ${SPRING_RABBITMQ_PASSWORD:guest}
+    username: ${SPRING_RABBITMQ_USERNAME:payments}
+    password: ${SPRING_RABBITMQ_PASSWORD:payments}
     virtual-host: ${SPRING_RABBITMQ_VHOST:/}
 
 management:
@@ -59,8 +59,8 @@ security:
     audience: "payments-clients"
 
 authorize-net:
-  api-login-id: "${AUTHORIZE_NET_LOGIN_ID:dummy-login}"
-  transaction-key: "${AUTHORIZE_NET_TRANSACTION_KEY:dummy-key}"
+  api-login-id: "${AUTHORIZE_NET_LOGIN_ID:4k4u4QpccWNx}"
+  transaction-key: "${AUTHORIZE_NET_TRANSACTION_KEY:7Er957Hr87L29Yyr}"
   endpoint: "https://apitest.authorize.net/xml/v1/request.api"
-  webhook-signature-key: "${AUTHORIZE_NET_SIGNATURE_KEY:dummy-signature}"
+  webhook-signature-key: "${AUTHORIZE_NET_SIGNATURE_KEY:1F72E7B605E7512D046BBDDD8A284100108DE259919648E2B70B08ABFDE54281EECE2280B244D28C4F61D2CDDD6BA5C3AD4748D100AFF4388726B8A4AE153F3C}"
   default-currency: "${AUTHORIZE_NET_DEFAULT_CURRENCY:USD}"

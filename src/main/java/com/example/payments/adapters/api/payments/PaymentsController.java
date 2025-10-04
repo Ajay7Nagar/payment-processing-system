@@ -32,7 +32,7 @@ public class PaymentsController {
     }
 
     @PostMapping("/purchase")
-    @PreAuthorize("hasRole('PAYMENTS_WRITE')")
+    @PreAuthorize("hasAuthority('PAYMENTS_PURCHASE_CREATE')")
     public ResponseEntity<PaymentResponse> purchase(@Valid @RequestBody PurchaseRequest request) {
         var order = paymentCommandService.purchase(request.customerId(),
                 new Money(request.amount(), request.currency()), request.paymentNonce(),
@@ -43,7 +43,7 @@ public class PaymentsController {
     }
 
     @PostMapping("/authorize")
-    @PreAuthorize("hasRole('PAYMENTS_WRITE')")
+    @PreAuthorize("hasAuthority('PAYMENTS_AUTHORIZE_CREATE')")
     public ResponseEntity<PaymentResponse> authorize(@Valid @RequestBody AuthorizeRequest request) {
         var order = paymentCommandService.authorize(request.customerId(),
                 new Money(request.amount(), request.currency()), request.paymentNonce(),
@@ -54,7 +54,7 @@ public class PaymentsController {
     }
 
     @PostMapping("/capture")
-    @PreAuthorize("hasRole('PAYMENTS_WRITE')")
+    @PreAuthorize("hasAuthority('PAYMENTS_CAPTURE_EXECUTE')")
     public ResponseEntity<PaymentResponse> capture(@Valid @RequestBody CaptureRequest request) {
         var order = paymentCommandService.capture(request.orderId(),
                 new Money(request.amount(), "USD"), request.actorId());
@@ -62,14 +62,14 @@ public class PaymentsController {
     }
 
     @PostMapping("/cancel")
-    @PreAuthorize("hasRole('PAYMENTS_WRITE')")
+    @PreAuthorize("hasAuthority('PAYMENTS_CANCEL_EXECUTE')")
     public ResponseEntity<PaymentResponse> cancel(@Valid @RequestBody CancelRequest request) {
         var order = paymentCommandService.cancel(request.orderId(), request.actorId());
         return ResponseEntity.ok(toResponse(order));
     }
 
     @PostMapping("/refund")
-    @PreAuthorize("hasRole('PAYMENTS_WRITE')")
+    @PreAuthorize("hasAuthority('PAYMENTS_REFUND_EXECUTE')")
     public ResponseEntity<Void> refund(@Valid @RequestBody RefundRequest request) {
         paymentCommandService.refund(request.orderId(),
                 new Money(request.amount(), "USD"), request.lastFour(), request.actorId());

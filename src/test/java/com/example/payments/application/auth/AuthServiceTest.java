@@ -4,6 +4,9 @@ import com.example.payments.application.auth.dto.AuthResponse;
 import com.example.payments.application.auth.dto.LoginRequest;
 import com.example.payments.application.auth.dto.RefreshTokenRequest;
 import com.example.payments.application.auth.dto.RegisterRequest;
+import com.example.payments.domain.customer.Customer;
+import com.example.payments.domain.customer.CustomerRepository;
+import com.example.payments.domain.user.Claim;
 import com.example.payments.domain.user.Role;
 import com.example.payments.domain.user.RoleRepository;
 import com.example.payments.domain.user.User;
@@ -36,6 +39,7 @@ class AuthServiceTest {
     private UserRepository userRepository;
     private RoleRepository roleRepository;
     private RefreshTokenRepository refreshTokenRepository;
+    private CustomerRepository customerRepository;
     private PasswordEncoder passwordEncoder;
     private JwtService jwtService;
     private ApplicationEventPublisher eventPublisher;
@@ -50,15 +54,17 @@ class AuthServiceTest {
         passwordEncoder = mock(PasswordEncoder.class);
         jwtService = mock(JwtService.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
+        customerRepository = mock(CustomerRepository.class);
 
-        authService = new AuthService(userRepository, roleRepository, refreshTokenRepository, passwordEncoder, jwtService,
-                eventPublisher);
+        authService = new AuthService(userRepository, roleRepository, refreshTokenRepository, customerRepository,
+                passwordEncoder, jwtService, eventPublisher);
     }
 
     @Test
     void register_createsUserAndReturnsTokens() {
         RegisterRequest request = new RegisterRequest("user@example.com", "secret", "User", List.of("ADMIN"));
         Role adminRole = new Role("ADMIN", "Administrator");
+        adminRole.addClaim(new Claim("COMPLIANCE_AUDIT_VIEW", "Audit"));
 
         given(userRepository.existsByEmailIgnoreCase("user@example.com")).willReturn(false);
         given(roleRepository.findByCode("ADMIN")).willReturn(Optional.of(adminRole));
@@ -75,15 +81,26 @@ class AuthServiceTest {
             ReflectionTestUtils.setField(toSave, "id", userId);
             return toSave;
         });
+        given(customerRepository.findByExternalRef(userId.toString())).willReturn(Optional.empty());
+        UUID customerId = UUID.randomUUID();
+        given(customerRepository.save(any(Customer.class))).willAnswer(invocation -> {
+            Customer c = invocation.getArgument(0);
+            ReflectionTestUtils.setField(c, "id", customerId);
+            return c;
+        });
         given(jwtService.createToken(any(), any())).willReturn("access-token");
         given(refreshTokenRepository.save(any(RefreshToken.class))).willAnswer(invocation -> invocation.getArgument(0));
 
         AuthResponse response = authService.register(request);
 
-        assertThat(response.accessToken()).isEqualTo("access-token");
-        assertThat(response.refreshToken()).isNotBlank();
+        assertThat(response.userId()).isEqualTo(userId);
+        assertThat(response.email()).isEqualTo("user@example.com");
+        assertThat(response.customerId()).isEqualTo(customerId);
+        assertThat(response.accessToken()).isEmpty();
+        assertThat(response.refreshToken()).isEmpty();
+        assertThat(response.refreshTokenExpiresAt()).isEmpty();
         verify(passwordEncoder).encode("secret");
-        verify(refreshTokenRepository).save(any(RefreshToken.class));
+        verify(refreshTokenRepository, never()).save(any(RefreshToken.class));
     }
 
     @Test
@@ -101,17 +118,25 @@ class AuthServiceTest {
     void login_validCredentialsIssuesTokens() {
         LoginRequest request = new LoginRequest("user@example.com", "secret");
         User user = new User("user@example.com", "hashed", "User");
-        user.addRole(new Role("ADMIN", "admin"));
+        Role adminRole = new Role("ADMIN", "admin");
+        adminRole.addClaim(new Claim("COMPLIANCE_AUDIT_VIEW", "Audit"));
+        user.addRole(adminRole);
         ReflectionTestUtils.setField(user, "id", UUID.randomUUID());
 
         given(userRepository.findByEmailIgnoreCase("user@example.com")).willReturn(Optional.of(user));
         given(passwordEncoder.matches("secret", "hashed")).willReturn(true);
+        Customer customer = Customer.forExternalRef("ref");
+        ReflectionTestUtils.setField(customer, "id", UUID.randomUUID());
+        given(customerRepository.findByExternalRef(any())).willReturn(Optional.of(customer));
         given(jwtService.createToken(any(), any())).willReturn("access-token");
         given(refreshTokenRepository.save(any(RefreshToken.class))).willAnswer(invocation -> invocation.getArgument(0));
 
         AuthResponse response = authService.login(request);
 
-        assertThat(response.accessToken()).isEqualTo("access-token");
+        assertThat(response.accessToken()).contains("access-token");
+        assertThat(response.refreshToken()).isPresent();
+        assertThat(response.refreshTokenExpiresAt()).isPresent();
+        assertThat(response.customerId()).isEqualTo(customer.getId());
         verify(refreshTokenRepository).save(any(RefreshToken.class));
     }
 
@@ -134,12 +159,18 @@ class AuthServiceTest {
         RefreshToken refreshToken = new RefreshToken(user, UUID.randomUUID().toString(), Instant.now().plusSeconds(60));
 
         given(refreshTokenRepository.findByToken(refreshToken.getToken())).willReturn(Optional.of(refreshToken));
+        Customer customer = Customer.forExternalRef("ref");
+        ReflectionTestUtils.setField(customer, "id", UUID.randomUUID());
+        given(customerRepository.findByExternalRef(any())).willReturn(Optional.of(customer));
         given(jwtService.createToken(any(), any())).willReturn("new-access");
         given(refreshTokenRepository.save(any(RefreshToken.class))).willAnswer(invocation -> invocation.getArgument(0));
 
         AuthResponse response = authService.refresh(new RefreshTokenRequest(refreshToken.getToken()));
 
-        assertThat(response.accessToken()).isEqualTo("new-access");
+        assertThat(response.accessToken()).contains("new-access");
+        assertThat(response.refreshToken()).isPresent();
+        assertThat(response.refreshTokenExpiresAt()).isPresent();
+        assertThat(response.customerId()).isEqualTo(customer.getId());
         verify(refreshTokenRepository).save(any(RefreshToken.class));
     }
 

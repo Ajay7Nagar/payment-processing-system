@@ -41,7 +41,7 @@ class ComplianceAuditControllerTest {
                 .query(any(ComplianceAuditFilter.class), any());
 
         mockMvc.perform(get("/api/v1/compliance/audit-logs")
-                .with(jwt("test-user", "COMPLIANCE_OFFICER"))
+                .with(jwt("test-user", "COMPLIANCE_AUDIT_VIEW"))
                 .param("page", "0")
                 .param("size", "10"))
                 .andExpect(status().isOk())
@@ -54,7 +54,7 @@ class ComplianceAuditControllerTest {
         doReturn(List.of(log)).when(complianceAuditService).export(any(ComplianceAuditFilter.class));
 
         mockMvc.perform(post("/api/v1/compliance/audit-logs/export")
-                .with(jwt("test-user", "COMPLIANCE_OFFICER"))
+                .with(jwt("test-user", "COMPLIANCE_AUDIT_VIEW"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{}"))
                 .andExpect(status().isOk())

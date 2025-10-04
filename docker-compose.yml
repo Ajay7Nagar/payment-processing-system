@@ -21,6 +21,8 @@ services:
       POSTGRES_USER: payments
       POSTGRES_PASSWORD: payments
       POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    ports:
+      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U payments"]
       interval: 5s
@@ -103,4 +105,3 @@ services:
 
 volumes:
   payments-db-data:
-

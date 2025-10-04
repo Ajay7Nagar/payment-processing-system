@@ -5,6 +5,8 @@ import com.example.payments.application.auth.dto.LoginRequest;
 import com.example.payments.application.auth.dto.RefreshTokenRequest;
 import com.example.payments.application.auth.dto.RegisterRequest;
 import com.example.payments.application.auth.event.UserRegisteredEvent;
+import com.example.payments.domain.customer.Customer;
+import com.example.payments.domain.customer.CustomerRepository;
 import com.example.payments.domain.user.Role;
 import com.example.payments.domain.user.RoleRepository;
 import com.example.payments.domain.user.User;
@@ -15,8 +17,11 @@ import com.example.payments.infra.auth.RefreshTokenRepository;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -31,6 +36,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final CustomerRepository customerRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final ApplicationEventPublisher eventPublisher;
@@ -38,12 +44,14 @@ public class AuthService {
     public AuthService(UserRepository userRepository,
             RoleRepository roleRepository,
             RefreshTokenRepository refreshTokenRepository,
+            CustomerRepository customerRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.customerRepository = customerRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.eventPublisher = eventPublisher;
@@ -71,8 +79,11 @@ public class AuthService {
         roles.forEach(user::addRole);
 
         User saved = userRepository.save(user);
+
+        UUID customerId = ensureCustomer(saved).getId();
+
         eventPublisher.publishEvent(new UserRegisteredEvent(saved.getId(), saved.getEmail()));
-        return issueTokens(saved);
+        return AuthResponse.registration(saved.getId(), saved.getEmail(), saved.getFullName(), customerId);
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -83,7 +94,9 @@ public class AuthService {
             throw new BadCredentialsException("Invalid email or password");
         }
 
-        return issueTokens(user);
+        UUID customerId = ensureCustomer(user).getId();
+
+        return issueTokens(user, customerId);
     }
 
     public AuthResponse refresh(RefreshTokenRequest request) {
@@ -94,17 +107,20 @@ public class AuthService {
             throw new BadCredentialsException("Refresh token expired or revoked");
         }
 
-        return issueTokens(refreshToken.getUser());
+        UUID customerId = ensureCustomer(refreshToken.getUser()).getId();
+
+        return issueTokens(refreshToken.getUser(), customerId);
     }
 
     public void revokeRefreshTokens(UUID userId) {
         refreshTokenRepository.deleteByUserId(userId);
     }
 
-    private AuthResponse issueTokens(User user) {
-        Collection<SimpleGrantedAuthority> authorities = user.getRoles().stream()
-                .map(Role::getCode)
-                .map(code -> new SimpleGrantedAuthority("ROLE_" + code))
+    private AuthResponse issueTokens(User user, UUID customerId) {
+        Set<String> claimCodes = user.getClaimCodes();
+
+        Collection<SimpleGrantedAuthority> authorities = claimCodes.stream()
+                .map(SimpleGrantedAuthority::new)
                 .toList();
 
         String accessToken = jwtService.createToken(user.getId().toString(), authorities);
@@ -115,6 +131,12 @@ public class AuthService {
         RefreshToken refreshToken = new RefreshToken(user, refreshTokenValue, refreshExpiry);
         refreshTokenRepository.save(refreshToken);
 
-        return new AuthResponse(accessToken, refreshTokenValue, refreshExpiry);
+        return AuthResponse.authenticated(user.getId(), user.getEmail(), user.getFullName(), customerId,
+                accessToken, refreshTokenValue, refreshExpiry);
+    }
+
+    private Customer ensureCustomer(User user) {
+        return customerRepository.findByExternalRef(user.getId().toString())
+                .orElseGet(() -> customerRepository.save(Customer.forExternalRef(user.getId().toString())));
     }
 }

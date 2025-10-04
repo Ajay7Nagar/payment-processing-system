@@ -9,10 +9,7 @@ public class AuthorizeNetEnvironmentResolver {
 
     public Environment resolve(AuthorizeNetProperties properties) {
         String endpoint = properties.getEndpoint();
-        if (endpoint == null) {
-            return Environment.SANDBOX;
-        }
-        if (endpoint.contains("apitest.authorize.net")) {
+        if (endpoint == null || endpoint.contains("apitest.authorize.net")) {
             return Environment.SANDBOX;
         }
         if (endpoint.contains("api2.authorize.net") || endpoint.contains("api.authorize.net")) {
@@ -25,4 +22,3 @@ public class AuthorizeNetEnvironmentResolver {
         return properties.getEndpoint();
     }
 }
-

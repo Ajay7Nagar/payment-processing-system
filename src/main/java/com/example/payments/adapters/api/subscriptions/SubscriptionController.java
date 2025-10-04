@@ -41,7 +41,7 @@ public class SubscriptionController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('SUBSCRIPTIONS_WRITE')")
+    @PreAuthorize("hasAuthority('SUBSCRIPTIONS_CREATE')")
     public ResponseEntity<SubscriptionResponse> createSubscription(
             @RequestHeader("Idempotency-Key") @NotBlank String idempotencyKey,
             @RequestHeader(value = "X-Correlation-Id", required = false) String correlationIdHeader,
@@ -58,14 +58,14 @@ public class SubscriptionController {
     }
 
     @GetMapping("/{subscriptionId}")
-    @PreAuthorize("hasRole('SUBSCRIPTIONS_READ')")
+    @PreAuthorize("hasAuthority('SUBSCRIPTIONS_VIEW_ANY')")
     public ResponseEntity<SubscriptionResponse> getSubscription(@PathVariable UUID subscriptionId) {
         var subscription = subscriptionService.getSubscription(subscriptionId);
         return ResponseEntity.ok(toResponse(subscription));
     }
 
     @PutMapping("/{subscriptionId}")
-    @PreAuthorize("hasRole('SUBSCRIPTIONS_WRITE')")
+    @PreAuthorize("hasAuthority('SUBSCRIPTIONS_UPDATE')")
     public ResponseEntity<SubscriptionResponse> updateSubscription(
             @RequestHeader("Idempotency-Key") @NotBlank String idempotencyKey,
             @PathVariable UUID subscriptionId,
@@ -78,7 +78,7 @@ public class SubscriptionController {
     }
 
     @PostMapping("/{subscriptionId}/pause")
-    @PreAuthorize("hasRole('SUBSCRIPTIONS_WRITE')")
+    @PreAuthorize("hasAuthority('SUBSCRIPTIONS_UPDATE')")
     public ResponseEntity<SubscriptionResponse> pauseSubscription(@PathVariable UUID subscriptionId) {
         subscriptionService.pauseSubscription(subscriptionId);
         var subscription = subscriptionService.getSubscription(subscriptionId);
@@ -86,7 +86,7 @@ public class SubscriptionController {
     }
 
     @PostMapping("/{subscriptionId}/resume")
-    @PreAuthorize("hasRole('SUBSCRIPTIONS_WRITE')")
+    @PreAuthorize("hasAuthority('SUBSCRIPTIONS_UPDATE')")
     public ResponseEntity<SubscriptionResponse> resumeSubscription(@PathVariable UUID subscriptionId,
             @Valid @RequestBody SubscriptionActionRequest request) {
         OffsetDateTime nextBilling = request.nextBillingAt().orElse(OffsetDateTime.now().plusDays(1));
@@ -95,21 +95,21 @@ public class SubscriptionController {
     }
 
     @PostMapping("/{subscriptionId}/cancel")
-    @PreAuthorize("hasRole('SUBSCRIPTIONS_WRITE')")
+    @PreAuthorize("hasAuthority('SUBSCRIPTIONS_UPDATE')")
     public ResponseEntity<SubscriptionResponse> cancelSubscription(@PathVariable UUID subscriptionId) {
         var subscription = subscriptionService.cancelSubscription(subscriptionId);
         return ResponseEntity.ok(toResponse(subscription));
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('SUBSCRIPTIONS_READ')")
+    @PreAuthorize("hasAuthority('SUBSCRIPTIONS_VIEW_ANY')")
     public ResponseEntity<SubscriptionListResponse> listSubscriptions() {
         var subscriptions = subscriptionService.listSubscriptions().stream().map(this::toResponse).toList();
         return ResponseEntity.ok(new SubscriptionListResponse(subscriptions));
     }
 
     @GetMapping("/{subscriptionId}/schedules")
-    @PreAuthorize("hasRole('SUBSCRIPTIONS_READ')")
+    @PreAuthorize("hasAuthority('SUBSCRIPTIONS_VIEW_ANY')")
     public ResponseEntity<List<SubscriptionScheduleResponse>> listSchedules(@PathVariable UUID subscriptionId) {
         var schedules = subscriptionService.getSchedules(subscriptionId).stream()
                 .map(SubscriptionScheduleResponse::fromDomain)
@@ -118,7 +118,7 @@ public class SubscriptionController {
     }
 
     @GetMapping("/{subscriptionId}/dunning")
-    @PreAuthorize("hasRole('SUBSCRIPTIONS_READ')")
+    @PreAuthorize("hasAuthority('SUBSCRIPTIONS_VIEW_ANY')")
     public ResponseEntity<List<DunningHistoryResponse>> listDunning(@PathVariable UUID subscriptionId) {
         var history = subscriptionService.getDunningHistory(subscriptionId).stream()
                 .map(DunningHistoryResponse::fromDomain)

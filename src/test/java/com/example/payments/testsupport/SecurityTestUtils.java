@@ -11,10 +11,10 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 public class SecurityTestUtils {
 
-    public static RequestPostProcessor jwt(String subject, String... roles) {
+    public static RequestPostProcessor jwt(String subject, String... claims) {
         return request -> {
-            Collection<? extends GrantedAuthority> authorities = Arrays.stream(roles)
-                    .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
+            Collection<? extends GrantedAuthority> authorities = Arrays.stream(claims)
+                    .map(SimpleGrantedAuthority::new)
                     .collect(Collectors.toList());
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(subject, null, authorities);
             SecurityContextHolder.getContext().setAuthentication(authentication);

@@ -1,6 +1,5 @@
 package com.example.payments.domain.user;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -18,9 +17,11 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "users")
@@ -52,12 +53,25 @@ public class User {
     @Version
     private long version;
 
-    @ManyToMany(fetch = FetchType.EAGER, cascade = {CascadeType.MERGE})
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "user_roles",
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles = new HashSet<>();
+
+    public Set<Claim> getClaims() {
+        return roles.stream()
+                .flatMap(role -> role.getClaims().stream())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    public Set<String> getClaimCodes() {
+        return getClaims().stream()
+                .map(Claim::getCode)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
 
     protected User() {
         // for JPA

@@ -15,13 +15,14 @@ import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Profile;
 import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
-@Profile("!test")
+//@Profile("sdk")
 @Primary
+@Profile("!test")
 public class AuthorizeNetSdkClient implements AuthorizeNetClient {
 
     private static final Logger log = LoggerFactory.getLogger(AuthorizeNetSdkClient.class);
@@ -33,6 +34,7 @@ public class AuthorizeNetSdkClient implements AuthorizeNetClient {
 
     public AuthorizeNetSdkClient(AuthorizeNetProperties properties, ObservationRegistry observationRegistry,
             AuthorizeNetMapper mapper, AuthorizeNetEnvironmentResolver environmentResolver) {
+        log.info("Using Authorize.Net SDK client for payment gateway integration");
         this.properties = properties;
         this.observationRegistry = observationRegistry;
         this.mapper = mapper;

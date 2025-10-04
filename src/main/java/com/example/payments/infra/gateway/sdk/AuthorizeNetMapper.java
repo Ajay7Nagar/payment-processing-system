@@ -14,6 +14,7 @@ import com.example.payments.domain.payments.GatewayTransactionResult;
 import com.example.payments.domain.payments.Money;
 import com.example.payments.domain.payments.PaymentException;
 import com.example.payments.infra.gateway.AuthorizeNetProperties;
+import com.example.payments.infra.gateway.AuthorizeNetReferenceIdSanitizer;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
@@ -25,12 +26,13 @@ public class AuthorizeNetMapper {
             Money amount, String paymentData, String referenceId, String refTransId) {
         CreateTransactionRequest request = new CreateTransactionRequest();
         request.setMerchantAuthentication(buildMerchantAuthentication(properties));
-        request.setRefId(referenceId);
+        String sanitisedRefId = AuthorizeNetReferenceIdSanitizer.resolve(referenceId);
+        request.setRefId(sanitisedRefId);
 
         TransactionRequestType txn = new TransactionRequestType();
         txn.setTransactionType(type.value());
         txn.setAmount(amount.amount());
-        txn.setOrder(buildOrder(referenceId));
+        txn.setOrder(buildOrder(sanitisedRefId));
 
         if (type == TransactionTypeEnum.AUTH_CAPTURE_TRANSACTION || type == TransactionTypeEnum.AUTH_ONLY_TRANSACTION) {
             txn.setPayment(resolvePaymentForAuth(properties, paymentData));
@@ -120,6 +122,12 @@ public class AuthorizeNetMapper {
 
         String transactionId = response.getTransactionResponse().getTransId();
         String responseCode = Optional.ofNullable(response.getTransactionResponse().getResponseCode()).orElse("0");
+        String responseMessage = getResponseMessage(response);
+
+        return GatewayTransactionResult.success(transactionId, responseCode, responseMessage, OffsetDateTime.now());
+    }
+
+    private static String getResponseMessage(CreateTransactionResponse response) {
         String responseMessage = null;
         if (response.getTransactionResponse().getMessages() != null
                 && response.getTransactionResponse().getMessages().getMessage() != null
@@ -137,8 +145,7 @@ public class AuthorizeNetMapper {
         if (responseMessage == null) {
             responseMessage = "Approved";
         }
-
-        return GatewayTransactionResult.success(transactionId, responseCode, responseMessage, OffsetDateTime.now());
+        return responseMessage;
     }
 
     public MerchantAuthenticationType buildMerchantAuthentication(AuthorizeNetProperties properties) {
@@ -189,4 +196,3 @@ public class AuthorizeNetMapper {
     private record CardDetails(String number, String expiration, String cardCode) {
     }
 }
-

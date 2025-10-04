@@ -150,12 +150,12 @@ public class PaymentCommandService {
         PaymentOrder order = paymentOrderRepository.findById(orderId)
                 .orElseThrow(() -> new PaymentException("ORDER_NOT_FOUND", "Payment order not found"));
 
-        if (order.getStatus() != PaymentOrderStatus.AUTHORIZED && order.getStatus() != PaymentOrderStatus.CREATED) {
+        if (order.getStatus() != PaymentOrderStatus.AUTHORIZED && order.getStatus() != PaymentOrderStatus.CREATED && order.getStatus() != PaymentOrderStatus.CAPTURED) {
             throw new PaymentException("INVALID_STATE", "Order cannot be cancelled from state " + order.getStatus());
         }
 
         PaymentTransaction authorization = order.getTransactions().stream()
-                .filter(tx -> tx.getType() == PaymentTransactionType.AUTHORIZATION)
+//                .filter(tx -> tx.getType() == PaymentTransactionType.AUTHORIZATION)
                 .findFirst()
                 .orElseThrow(() -> new PaymentException("AUTH_MISSING", "Authorization transaction missing"));
 

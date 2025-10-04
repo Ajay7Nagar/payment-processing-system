@@ -97,7 +97,7 @@ class SubscriptionControllerTest {
                 .content(payload)
                 .header("Idempotency-Key", idempotencyKey)
                 .header("X-Correlation-Id", correlationId)
-                .with(user("writer").roles("SUBSCRIPTIONS_WRITE")))
+                .with(user("writer").authorities(() -> "SUBSCRIPTIONS_CREATE")))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.planCode").value("PLAN_BASIC"))
                 .andExpect(jsonPath("$.amount").value("49.99"));
@@ -131,7 +131,7 @@ class SubscriptionControllerTest {
                 .content(payload)
                 .header("Idempotency-Key", idempotencyKey)
                 .header("X-Correlation-Id", correlationId)
-                .with(user("reader").roles("PAYMENTS_READ")))
+                .with(user("reader").authorities(() -> "PAYMENTS_PURCHASE_VIEW_ANY")))
                 .andExpect(status().isForbidden());
     }
 
@@ -141,7 +141,7 @@ class SubscriptionControllerTest {
         when(subscriptionService.getSubscription(subscriptionId)).thenReturn(subscription);
 
         mockMvc.perform(get("/api/v1/subscriptions/{subscriptionId}", subscriptionId)
-                .with(user("reader").roles("SUBSCRIPTIONS_READ")))
+                .with(user("reader").authorities(() -> "SUBSCRIPTIONS_VIEW_ANY")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(subscription.getId().toString()))
                 .andExpect(jsonPath("$.status").value(SubscriptionStatus.ACTIVE.name()));
@@ -167,7 +167,7 @@ class SubscriptionControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(payload)
                 .header("Idempotency-Key", idempotencyKey)
-                .with(user("writer").roles("SUBSCRIPTIONS_WRITE")))
+                .with(user("writer").authorities(() -> "SUBSCRIPTIONS_UPDATE")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.planCode").value("PLAN_BASIC"));
 
@@ -184,7 +184,7 @@ class SubscriptionControllerTest {
         when(subscriptionService.getSchedules(subscriptionId)).thenReturn(List.of());
 
         mockMvc.perform(get("/api/v1/subscriptions/{subscriptionId}/schedules", subscriptionId)
-                .with(user("reader").roles("SUBSCRIPTIONS_READ")))
+                .with(user("reader").authorities(() -> "SUBSCRIPTIONS_VIEW_ANY")))
                 .andExpect(status().isOk());
     }
 
@@ -200,7 +200,7 @@ class SubscriptionControllerTest {
         mockMvc.perform(post("/api/v1/subscriptions/{subscriptionId}/resume", subscriptionId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(payload)
-                .with(user("writer").roles("SUBSCRIPTIONS_WRITE")))
+                .with(user("writer").authorities(() -> "SUBSCRIPTIONS_UPDATE")))
                 .andExpect(status().isOk());
 
         ArgumentCaptor<OffsetDateTime> captor = ArgumentCaptor.forClass(OffsetDateTime.class);
@@ -212,7 +212,7 @@ class SubscriptionControllerTest {
     @DisplayName("listSubscriptions returns list")
     void listSubscriptions_missingMerchantHeader() throws Exception {
         mockMvc.perform(get("/api/v1/subscriptions")
-                .with(user("reader").roles("SUBSCRIPTIONS_READ")))
+                .with(user("reader").authorities(() -> "SUBSCRIPTIONS_VIEW_ANY")))
                 .andExpect(status().isOk());
     }
 }

@@ -36,7 +36,7 @@ public class ComplianceAuditController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('COMPLIANCE_OFFICER')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_AUDIT_VIEW')")
     public ResponseEntity<Page<ComplianceAuditResponse>> query(@Valid ComplianceAuditQueryRequest request) {
         ComplianceAuditFilter filter = toFilter(request.start(), request.end(), request.actor(), request.operation(),
                 request.resourceType(), request.resourceId());
@@ -45,7 +45,7 @@ public class ComplianceAuditController {
     }
 
     @PostMapping("/export")
-    @PreAuthorize("hasRole('COMPLIANCE_OFFICER')")
+    @PreAuthorize("hasAuthority('COMPLIANCE_AUDIT_VIEW')")
     public ResponseEntity<List<ComplianceAuditResponse>> export(@Valid @RequestBody ComplianceAuditExportRequest request) {
         ComplianceAuditFilter filter = toFilter(request.start(), request.end(), request.actor(), request.operation(),
                 request.resourceType(), request.resourceId());
